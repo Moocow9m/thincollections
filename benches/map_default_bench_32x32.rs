@@ -14,7 +14,6 @@ extern crate rand;
 extern crate xoshiro;
 
 use thincollections::thin_map::ThinMap;
-use thincollections::cla_map::ClaMap;
 
 use std::collections::HashMap;
 use test::Bencher;
@@ -58,7 +57,7 @@ fn benchmdr_thin_get(b: &mut Bencher) {
         get_src.truncate(*p as usize);
         rng1.shuffle(&mut get_src);
         b.iter(|| get_thin_from_vec(&map, &get_src));
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("ThinMap rnd get");
@@ -80,7 +79,7 @@ fn benchmdr_std_get(b: &mut Bencher) {
         get_src.truncate(*p as usize);
         rng1.shuffle(&mut get_src);
         b.iter(|| get_std_from_vec(&map, &get_src));
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("HashMap rnd get");
@@ -97,7 +96,7 @@ fn benchmdr_thin_insert(b: &mut Bencher) {
     for p in points.iter() {
         let mut b = b.clone();
         b.iter(|| create_thin_from_vec(*p, &src));
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("ThinMap rnd insert");
@@ -114,7 +113,7 @@ fn benchmdr_std_insert(b: &mut Bencher) {
     for p in points.iter() {
         let mut b = b.clone();
         b.iter(|| create_std_from_vec(*p, &src));
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("HashMap rnd insert");
@@ -130,7 +129,7 @@ fn benchmds_thin_insert(b: &mut Bencher) {
     for p in points.iter() {
         let mut b = b.clone();
         b.iter(|| create_thin(*p, 0));
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("ThinMap seq insert");
@@ -146,7 +145,7 @@ fn benchmds_std_insert(b: &mut Bencher) {
     for p in points.iter() {
         let mut b = b.clone();
         b.iter(|| create_std(*p, 0));
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("HashMap seq insert");
@@ -164,7 +163,7 @@ fn benchmds_thin_get(b: &mut Bencher) {
         let map = create_thin(*p, 0);
         b.iter(|| get_seq_thin_var(&map, *p, 0));
         black_box(map.len());
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("ThinMap seq get");
@@ -182,18 +181,13 @@ fn benchmds_std_get(b: &mut Bencher) {
         let map = create_std(*p, 0);
         b.iter(|| get_seq_std_var(&map, *p, 0));
         black_box(map.len());
-        let summary: Summary = b.bench(|b: &mut Bencher| ()).unwrap();
+        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
         insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
     }
     println!("HashMap seq get");
     for x in insert_result.iter() {
         println!("{}, {}", (*x).0, (*x).1);
     }
-}
-
-//#[bench]
-fn bench_inserts_seq_cla(b: &mut Bencher) {
-    b.iter(|| large_inserts_seq_cla())
 }
 
 fn get_thin_from_vec(map: &ThinMap<i32, u32>, keys: &[i32]) {
@@ -308,17 +302,6 @@ fn get_seq_std_var(map: &HashMap<i32, u32>, size: u32, shift: u32) {
         c = c + 1;
     }
 }
-
-fn large_inserts_seq_cla() -> Option<u32> {
-    let mut cla_map = ClaMap::new();
-    let mut c = 1;
-    while c < 1_000_000 {
-        cla_map.insert(c, c as u32);
-        c = c + 1;
-    }
-    cla_map.insert(1, 100)
-}
-
 
 fn determine_points(max: u32) -> Vec<u32> {
     let mut thin_map: ThinMap<i32, u32> = ThinMap::with_capacity(10);

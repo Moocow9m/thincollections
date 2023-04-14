@@ -50,8 +50,6 @@ pub mod thin_v64;
 pub mod thin_vec;
 pub mod thin_hasher;
 #[doc(hidden)]
-pub mod cla_map;
-#[doc(hidden)]
 pub mod util;
 
 

@@ -13,9 +13,9 @@
 //! `ThinSet` uses `ThinMap` underneath, so it inherits all the properties of
 //! `ThinMap`.
 
-use thin_sentinel::*;
-use thin_hasher::*;
-use thin_map::*;
+use crate::thin_sentinel::*;
+use crate::thin_hasher::*;
+use crate::thin_map::*;
 
 use std::hash::BuildHasher;
 use std::hash::Hash;

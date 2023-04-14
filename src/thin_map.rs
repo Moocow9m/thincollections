@@ -22,9 +22,9 @@
 //! - Unlike `std::collections::HashMap`, inserts and removes do not cause element movement.
 //!
 
-use thin_sentinel::*;
-use thin_hasher::*;
-use util::*;
+use crate::thin_sentinel::*;
+use crate::thin_hasher::*;
+use crate::util::*;
 
 use std::{
     alloc::{self, Layout},
@@ -2136,7 +2136,7 @@ mod test_map {
     use super::OneFieldHasherBuilder;
     use super::Entry::{Occupied, Vacant};
     use std::cell::RefCell;
-    use thin_map::test_map::rand::prelude::*;
+    use crate::thin_map::test_map::rand::prelude::*;
 
     #[test]
     fn test_zero_capacities() {

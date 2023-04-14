@@ -1,4 +1,5 @@
 [package]
+edition = "2021"
 name = "thincollections"
 version = "0.5.3"
 authors = ["Mohammad Rezaei <mohdev@rezaei.cc>"]

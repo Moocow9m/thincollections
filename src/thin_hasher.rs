@@ -8,7 +8,7 @@
 //
 
 //! Implementations of `Hasher` that work well with `ThinMap`/`ThinSet`
-use util::*;
+use crate::util::*;
 
 use std::sync::atomic::*;
 use std::hash::Hasher;

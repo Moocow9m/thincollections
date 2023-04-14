@@ -16,13 +16,11 @@ extern crate rand;
 use thincollections::thin_v64::V64;
 use thincollections::thin_vec::ThinVec;
 
-use test::Bencher;
 use test::stats::Summary;
-use test::black_box;
 use std::rc::Rc;
+use criterion::{Bencher, black_box, Criterion, criterion_group, criterion_main};
 
-#[bench]
-pub fn benchv_v64_1M_insert(b: &mut Bencher) {
+fn benchv_v64_1m_insert(b: &mut Bencher) {
     b.iter(|| {
         let mut vec: V64<u64> = V64::with_capacity(16);
         for i in 0..1_000_000 {
@@ -32,8 +30,7 @@ pub fn benchv_v64_1M_insert(b: &mut Bencher) {
     });
 }
 
-#[bench]
-pub fn benchv_vec_1M_insert(b: &mut Bencher) {
+pub fn benchv_vec_1m_insert(b: &mut Bencher) {
     b.iter(|| {
         let mut vec: Vec<u64> = Vec::with_capacity(16);
         for i in 0..1_000_000 {
@@ -43,8 +40,7 @@ pub fn benchv_vec_1M_insert(b: &mut Bencher) {
     });
 }
 
-#[bench]
-pub fn benchv_thinvec_1M_insert(b: &mut Bencher) {
+pub fn benchv_thinvec_1m_insert(b: &mut Bencher) {
     b.iter(|| {
         let mut vec: ThinVec<u64> = ThinVec::with_capacity(16);
         for i in 0..1_000_000 {
@@ -54,7 +50,6 @@ pub fn benchv_thinvec_1M_insert(b: &mut Bencher) {
     });
 }
 
-#[bench]
 pub fn benchv_thinthin(b: &mut Bencher) {
     b.iter(|| {
         let mut vv: ThinVec<ThinVec<u32>> = ThinVec::with_capacity(16);
@@ -72,7 +67,6 @@ pub fn benchv_thinthin(b: &mut Bencher) {
     });
 }
 
-#[bench]
 pub fn benchv_thinv64(b: &mut Bencher) {
     b.iter(|| {
         let mut vv: ThinVec<V64<u32>> = ThinVec::with_capacity(16);
@@ -90,7 +84,6 @@ pub fn benchv_thinv64(b: &mut Bencher) {
     });
 }
 
-#[bench]
 pub fn benchv_vecvec(b: &mut Bencher) {
     b.iter(|| {
         let mut vv: Vec<Vec<u32>> = Vec::with_capacity(16);
@@ -124,7 +117,6 @@ fn powerset_thin<T>(s: &[T]) -> ThinVec<ThinVec<T>> where T: Clone {
     }).collect()
 }
 
-#[bench]
 pub fn benchp_vec(b: &mut Bencher) {
     b.iter(|| {
         let v: Vec<i32> = vec![1; 20];
@@ -133,7 +125,6 @@ pub fn benchp_vec(b: &mut Bencher) {
     })
 }
 
-#[bench]
 pub fn benchp_thin(b: &mut Bencher) {
     b.iter(|| {
         let v: ThinVec<i32> = thinvec![1; 20];
@@ -142,7 +133,6 @@ pub fn benchp_thin(b: &mut Bencher) {
     })
 }
 
-#[bench]
 pub fn benchprc_vec(b: &mut Bencher) {
     b.iter(|| {
         let v: Vec<_> = vec![Rc::new("b"); 20];
@@ -151,7 +141,6 @@ pub fn benchprc_vec(b: &mut Bencher) {
     })
 }
 
-#[bench]
 pub fn benchprc_thin(b: &mut Bencher) {
     b.iter(|| {
         let v: ThinVec<_> = thinvec![Rc::new("b"); 20];
@@ -160,13 +149,39 @@ pub fn benchprc_thin(b: &mut Bencher) {
     })
 }
 
-
-#[bench]
-pub fn benchx(b: &mut Bencher) {
-    b.iter(|| {
-        let v: ThinVec<_> = thinvec![Rc::new("b"); 20];
-        let x = powerset_thin(&v);
-        black_box(x.len());
-    })
+fn benchv_1m_insert(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Vec 1M insert");
+    group.bench_function("V64", benchv_v64_1m_insert);
+    group.bench_function("Vec", benchv_vec_1m_insert);
+    group.bench_function("ThinVec", benchv_thinvec_1m_insert);
+    group.finish();
 }
 
+fn benchv_type_insert(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Vec Type insert");
+    group.bench_function("ThinThin", benchv_thinthin);
+    group.bench_function("ThinV64", benchv_thinv64);
+    group.bench_function("VecVec", benchv_vecvec);
+    group.finish();
+}
+
+fn benchv_powerset_insert(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Vec PowerSet insert");
+    group.bench_function("Vec", benchp_vec);
+    group.bench_function("Thin", benchp_thin);
+    group.finish();
+}
+
+fn benchv_powerset_rc_insert(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Vec PowerSet insert");
+    group.bench_function("Vec", benchprc_vec);
+    group.bench_function("Thin", benchprc_thin);
+    group.finish();
+}
+
+criterion_group! {
+    name = benches;
+    config = Criterion::default();
+    targets = benchv_1m_insert, benchv_type_insert, benchv_powerset_insert, benchv_powerset_rc_insert
+}
+criterion_main!(benches);

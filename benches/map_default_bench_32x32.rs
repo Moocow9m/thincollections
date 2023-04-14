@@ -16,10 +16,9 @@ extern crate xoshiro;
 use thincollections::thin_map::ThinMap;
 
 use std::collections::HashMap;
-use test::Bencher;
-use test::stats::Summary;
-use test::black_box;
 
+use criterion::{Bencher, BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main, PlottingBackend};
+use criterion::measurement::WallTime;
 use rand::*;
 use xoshiro::Xoshiro512StarStar;
 
@@ -44,149 +43,85 @@ fn create_rand_vec(size: i32) -> Vec<i32> {
     vec
 }
 
-#[bench]
-fn benchmdr_thin_get(b: &mut Bencher) {
+fn benchmdr_thin_get(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
     let src = create_rand_vec(*points.last().unwrap() as i32);
     let mut rng1 = Xoshiro512StarStar::from_seed_u64(0x1234_5678_9ABC_DEF1);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
     for p in points.iter() {
-        let mut b = b.clone();
         let map = create_thin_from_vec(*p, &src);
         let mut get_src = src.clone();
         get_src.truncate(*p as usize);
         rng1.shuffle(&mut get_src);
-        b.iter(|| get_thin_from_vec(&map, &get_src));
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("ThinMap rnd get");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Thin", *p), |b| b.iter(|| get_thin_from_vec(&map, &get_src)));
     }
 }
 
-#[bench]
-fn benchmdr_std_get(b: &mut Bencher) {
+fn benchmdr_std_get(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
     let src = create_rand_vec(*points.last().unwrap() as i32);
     let mut rng1 = Xoshiro512StarStar::from_seed_u64(0x1234_5678_9ABC_DEF1);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
     for p in points.iter() {
-        let mut b = b.clone();
         let map = create_std_from_vec(*p, &src);
         let mut get_src = src.clone();
         get_src.truncate(*p as usize);
         rng1.shuffle(&mut get_src);
-        b.iter(|| get_std_from_vec(&map, &get_src));
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("HashMap rnd get");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Std", *p), |b| b.iter(|| get_std_from_vec(&map, &get_src)));
     }
 }
 
-#[bench]
-fn benchmdr_thin_insert(b: &mut Bencher) {
+fn benchmdr_thin_insert(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
     let src = create_rand_vec(*points.last().unwrap() as i32);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
     for p in points.iter() {
-        let mut b = b.clone();
-        b.iter(|| create_thin_from_vec(*p, &src));
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("ThinMap rnd insert");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Thin", *p), |b| b.iter(|| create_thin_from_vec(*p, &src)));
     }
 }
 
-#[bench]
-fn benchmdr_std_insert(b: &mut Bencher) {
+fn benchmdr_std_insert(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
     let src = create_rand_vec(*points.last().unwrap() as i32);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
     for p in points.iter() {
-        let mut b = b.clone();
-        b.iter(|| create_std_from_vec(*p, &src));
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("HashMap rnd insert");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Std", *p), |b| b.iter(|| create_std_from_vec(*p, &src)));
     }
 }
 
-#[bench]
-fn benchmds_thin_insert(b: &mut Bencher) {
+fn benchmds_thin_insert(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
     for p in points.iter() {
-        let mut b = b.clone();
-        b.iter(|| create_thin(*p, 0));
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("ThinMap seq insert");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Thin", *p), |b| b.iter(|| create_thin(*p, 0)));
+     }
+}
+
+fn benchmds_std_insert(group: &mut BenchmarkGroup<WallTime>) {
+    let points = determine_points(4_000_000);
+    for p in points.iter() {
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Std", *p), |b| b.iter(|| create_std(*p, 0)));
     }
 }
 
-#[bench]
-fn benchmds_std_insert(b: &mut Bencher) {
+fn benchmds_thin_get(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
     for p in points.iter() {
-        let mut b = b.clone();
-        b.iter(|| create_std(*p, 0));
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("HashMap seq insert");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
-    }
-}
-
-#[bench]
-fn benchmds_thin_get(b: &mut Bencher) {
-    let points = determine_points(4_000_000);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
-    for p in points.iter() {
-        let mut b = b.clone();
         let map = create_thin(*p, 0);
-        b.iter(|| get_seq_thin_var(&map, *p, 0));
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Thin", *p), |b| b.iter(|| get_seq_thin_var(&map, *p, 0)));
         black_box(map.len());
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("ThinMap seq get");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
     }
 }
 
-#[bench]
-fn benchmds_std_get(b: &mut Bencher) {
+fn benchmds_std_get(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
-    let mut insert_result: Vec<(u32, f64)> = Vec::new();
     for p in points.iter() {
-        let mut b = b.clone();
         let map = create_std(*p, 0);
-        b.iter(|| get_seq_std_var(&map, *p, 0));
+        group.throughput(criterion::Throughput::Elements(*p as u64));
+        group.bench_function(BenchmarkId::new("Std", *p), |b| b.iter(|| get_seq_std_var(&map, *p, 0)));
         black_box(map.len());
-        let summary: Summary = b.bench(|b: &mut Bencher| Ok(())).unwrap().unwrap();
-        insert_result.push((*p, (*p as f64) * 1000.0 / summary.median)); // throughput in millions/sec
-    }
-    println!("HashMap seq get");
-    for x in insert_result.iter() {
-        println!("{}, {}", (*x).0, (*x).1);
     }
 }
 
@@ -353,3 +288,42 @@ fn calc_points(thin_points: &[u32], result: &mut Vec<u32>) {
 //        prev = *i;
     }
 }
+
+fn benchmdr_get(c: &mut Criterion) {
+    let mut group = c.benchmark_group("32x32 Rnd Get");
+    let group_ptr = &mut group;
+    benchmdr_thin_get(group_ptr);
+    benchmdr_std_get(group_ptr);
+    group.finish();
+}
+
+fn benchmdr_insert(c: &mut Criterion) {
+    let mut group = c.benchmark_group("32x32 Rnd Insert");
+    let group_ptr = &mut group;
+    benchmdr_thin_insert(group_ptr);
+    benchmdr_std_insert(group_ptr);
+    group.finish();
+}
+
+fn benchmds_get(c: &mut Criterion) {
+    let mut group = c.benchmark_group("32x32 Seq Get");
+    let group_ptr = &mut group;
+    benchmds_thin_get(group_ptr);
+    benchmds_std_get(group_ptr);
+    group.finish();
+}
+
+fn benchmds_insert(c: &mut Criterion) {
+    let mut group = c.benchmark_group("32x32 Seq Insert");
+    let group_ptr = &mut group;
+    benchmds_thin_insert(group_ptr);
+    benchmds_std_insert(group_ptr);
+    group.finish();
+}
+
+criterion_group! {
+    name = benches;
+    config = Criterion::default();
+    targets = benchmdr_get, benchmdr_insert, benchmds_get, benchmds_insert
+}
+criterion_main!(benches);

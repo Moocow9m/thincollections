@@ -12,25 +12,25 @@
 //! # `ThinVec` a general `Vec` replacement in a single usize-sized pointer.
 use std::{
     alloc::{self, Layout},
-    mem, ptr, marker,
+    marker, mem, ptr,
 };
-use std::fmt::{self};
-use std::cmp;
-use std::ops::Index;
-use std::iter::FromIterator;
-use std::ops::Deref;
-use std::slice;
-use std::slice::SliceIndex;
-use std::ptr::NonNull;
-use std::ops::DerefMut;
-use std::ops::IndexMut;
-use std::borrow::Cow;
-use std::iter::FusedIterator;
-use std::ops::RangeBounds;
-use std::ops::Bound::*;
 use std::borrow::Borrow;
 use std::borrow::BorrowMut;
+use std::borrow::Cow;
+use std::cmp;
+use std::fmt::{self};
+use std::iter::FromIterator;
+use std::iter::FusedIterator;
 use std::num::NonZeroUsize;
+use std::ops::Bound::*;
+use std::ops::Deref;
+use std::ops::DerefMut;
+use std::ops::Index;
+use std::ops::IndexMut;
+use std::ops::RangeBounds;
+use std::ptr::NonNull;
+use std::slice;
+use std::slice::SliceIndex;
 
 /// A thin (usize) vector. Guaranteed to be a usize-sized smart pointer.
 ///
@@ -295,7 +295,7 @@ const ZST_MASK: usize = 0x8000_0000_0000_0000;
 #[cfg(target_pointer_width = "32")]
 const ZST_MASK: usize = 0x8000_0000;
 
-pub static DANGLE: usize = <usize>::max_value(); // it is impossible for alloc to return this value, as we require at least 2*usize space
+pub static DANGLE: usize = <usize>::MAX; // it is impossible for alloc to return this value, as we require at least 2*usize space
 
 impl<T> ThinVec<T> {
     /// Constructs a new, empty `ThinVec<T>`.
@@ -371,11 +371,11 @@ impl<T> ThinVec<T> {
     /// ```
     #[inline]
     pub fn capacity(&self) -> usize {
-        if mem::size_of::<T>() == 0 { return <usize>::max_value(); }
+        if mem::size_of::<T>() == 0 { return <usize>::MAX; }
         if self.u.get() == DANGLE { return 0; }
         unsafe {
             let len_ptr = self.u.get() as *mut usize;
-            return *len_ptr.add(1);
+            *len_ptr.add(1)
         }
     }
 
@@ -674,11 +674,11 @@ impl<T> ThinVec<T> {
         assert!(index <= self.len());
         self.possibly_grow_heap();
         unsafe {
-            let len_ptr = self.u.get() as usize as *mut usize;
+            let len_ptr = self.u.get() as *mut usize;
             let len = *len_ptr;
             // The spot to put the new value
             {
-                let p = self.as_mut_ptr().offset(index as isize);
+                let p = self.as_mut_ptr().add(index);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
                 ptr::copy(p, p.offset(1), len - index);
@@ -741,7 +741,7 @@ impl<T> ThinVec<T> {
             let ret;
             {
                 // the place we are taking from.
-                let ptr = array.offset(index as isize);
+                let ptr = array.add(index);
                 // copy it out, unsafely having a copy of the value on
                 // the stack and in the vector at the same time.
                 ret = ptr::read(ptr);
@@ -810,7 +810,7 @@ impl<T> ThinVec<T> {
                 }
                 array = array.add(1);
             }
-            let len_ptr = self.u.get() as usize as *mut usize;
+            let len_ptr = self.u.get() as *mut usize;
             *len_ptr -= removed;
         }
     }
@@ -916,8 +916,8 @@ impl<T> ThinVec<T> {
             let mut w: usize = 1;
 
             while r < ln {
-                let p_r = p.offset(r as isize);
-                let p_wm1 = p.offset((w - 1) as isize);
+                let p_r = p.add(r);
+                let p_wm1 = p.add(w - 1);
                 if !same_bucket(&mut *p_r, &mut *p_wm1) {
                     if r != w {
                         let p_w = p_wm1.offset(1);
@@ -970,8 +970,8 @@ impl<T> ThinVec<T> {
     /// ```
     #[inline(always)]
     pub fn len(&self) -> usize {
-        if mem::size_of::<T>() == 0 { return (self.u.get() & (ZST_MASK - 1)) as usize; }
-        unsafe { return if self.u.get() == DANGLE { 0 } else { *(self.u.get() as *mut usize) }; };
+        if mem::size_of::<T>() == 0 { return self.u.get() & (ZST_MASK - 1); }
+        unsafe { if self.u.get() == DANGLE { 0 } else { *(self.u.get() as *mut usize) } }
     }
 
     /// Returns `true` if the vector contains no elements.
@@ -1018,7 +1018,7 @@ impl<T> ThinVec<T> {
         }
         self.possibly_grow_heap();
         unsafe {
-            let len_ptr = self.u.get() as usize as *mut usize;
+            let len_ptr = self.u.get() as *mut usize;
             let arr = (len_ptr as *mut u8).add(<ThinVec<T>>::header_bytes()) as *mut T;
             ptr::write(arr.add(*len_ptr), val);
             *len_ptr += 1;
@@ -1053,7 +1053,7 @@ impl<T> ThinVec<T> {
             }
             return None;
         }
-        if self.len() == 0 { return None; }
+        if self.is_empty() { return None; }
         let array: *mut T;
         let len: usize;
         {
@@ -1069,7 +1069,7 @@ impl<T> ThinVec<T> {
         unsafe {
             let ret;
             {
-                let ptr = array.offset((len - 1) as isize);
+                let ptr = array.add(len - 1);
                 ret = ptr::read(ptr);
             }
             Some(ret)
@@ -1174,7 +1174,7 @@ impl<T> ThinVec<T> {
             self.set_len(at);
             other.set_len(other_len);
 
-            ptr::copy_nonoverlapping(self.as_ptr().offset(at as isize),
+            ptr::copy_nonoverlapping(self.as_ptr().add(at),
                                      other.as_mut_ptr(),
                                      other.len());
         }
@@ -1241,7 +1241,7 @@ impl<T> ThinVec<T> {
     /// assert_eq!(slice.into_thinvec().capacity(), 3);
     /// # }
     /// ```
-    pub fn into_boxed_slice(mut self) -> Box<[T]> {
+    pub fn into_boxed_slice(self) -> Box<[T]> {
         if mem::size_of::<T>() == 0 {
             unsafe {
                 let slice = slice::from_raw_parts_mut(NonNull::dangling().as_ptr(), self.len());
@@ -1250,11 +1250,9 @@ impl<T> ThinVec<T> {
             }
         }
         unsafe {
-            let array: *mut T;
-            let len: usize;
             let len_ptr = self.u.get() as *mut usize;
-            array = (len_ptr as *mut u8).add(<ThinVec<T>>::header_bytes()) as *mut T;
-            len = *len_ptr;
+            let array: *mut T = (len_ptr as *mut u8).add(<ThinVec<T>>::header_bytes()) as *mut T;
+            let len: usize = *len_ptr;
             *len_ptr = 0; // prevents dropping of contents
             let layout = Layout::from_size_align(mem::size_of::<T>() * len, mem::align_of::<T>()).unwrap();
             let buffer = alloc::alloc(layout) as *mut T;
@@ -1327,7 +1325,7 @@ impl<T> ThinVec<T> {
             self.set_len(start);
             // Use the borrow in the IterMut to indicate borrowing behavior of the
             // whole Drain iterator (like &mut T).
-            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().offset(start as isize),
+            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().add(start),
                                                         end - start);
             Drain {
                 tail_start: end,
@@ -1466,7 +1464,7 @@ impl<T> ThinVec<T> {
         //      }
         if mem::size_of::<T>() == 0 {
             let mut count = 0;
-            while let Some(_element) = iterator.next() { count += 1; }
+            for _element in iterator.by_ref() { count += 1; }
             unsafe {
                 let len = self.len();
                 self.set_len(len + count);
@@ -1662,8 +1660,8 @@ impl<T> ThinVec<T> {
     /// [Sorting]: #sorting
     ///
     pub unsafe fn transmute<X>(self) -> ThinVec<X> {
-        assert!(mem::size_of::<X>() == mem::size_of::<T>());
-        assert!(mem::align_of::<X>() == mem::align_of::<T>());
+        assert_eq!(mem::size_of::<X>(), mem::size_of::<T>());
+        assert_eq!(mem::align_of::<X>(), mem::align_of::<T>());
         assert!(!mem::needs_drop::<X>());
         assert!(!mem::needs_drop::<T>());
         let v: ThinVec<X> = ThinVec { u: self.u, _marker: marker::PhantomData };
@@ -1742,8 +1740,6 @@ macro_rules! __impl_slice_eq1 {
         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
             #[inline]
             fn eq(&self, other: &$Rhs) -> bool { self[..] == other[..] }
-            #[inline]
-            fn ne(&self, other: &$Rhs) -> bool { self[..] != other[..] }
         }
     }
 }
@@ -1846,9 +1842,9 @@ impl<T> IntoIterator for ThinVec<T> {
                     end: ptr::null_mut(),
                 };
             }
-            let len_ptr = self.u.get() as usize as *mut u8 as *mut usize;
+            let len_ptr = self.u.get() as *mut u8 as *mut usize;
             let begin = (len_ptr as *mut u8).add(<ThinVec<T>>::header_bytes()) as *mut T;
-            let end = begin.offset(*len_ptr as isize) as *const T;
+            let end = begin.add(*len_ptr) as *const T;
 
             let buf = len_ptr as *mut u8;
             mem::forget(self);
@@ -1938,20 +1934,18 @@ impl<T> Iterator for IntoIter<T> {
         unsafe {
             if self.ptr as *const _ == self.end {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                // cast to u8, so we add 1, not zero
+                self.ptr = (self.ptr as *mut u8).add(1) as *mut T;
+
+                // Use a non-null pointer value
+                // (self.ptr might be null because of wrapping)
+                Some(ptr::read(NonNull::dangling().as_ptr()))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    // cast to u8, so we add 1, not zero
-                    self.ptr = (self.ptr as *mut u8).add(1) as *mut T;
+                let old = self.ptr;
+                self.ptr = self.ptr.offset(1);
 
-                    // Use a non-null pointer value
-                    // (self.ptr might be null because of wrapping)
-                    Some(ptr::read(NonNull::dangling().as_ptr()))
-                } else {
-                    let old = self.ptr;
-                    self.ptr = self.ptr.offset(1);
-
-                    Some(ptr::read(old))
-                }
+                Some(ptr::read(old))
             }
         }
     }
@@ -1978,18 +1972,16 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
         unsafe {
             if self.end == self.ptr {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                self.end = (self.end as *const i8).sub(1) as *mut T;
+
+                // Use a non-null pointer value
+                // (self.end might be null because of wrapping)
+                Some(ptr::read(NonNull::dangling().as_ptr()))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    self.end = (self.end as *const i8).sub(1) as *mut T;
+                self.end = self.end.offset(-1);
 
-                    // Use a non-null pointer value
-                    // (self.end might be null because of wrapping)
-                    Some(ptr::read(NonNull::dangling().as_ptr()))
-                } else {
-                    self.end = self.end.offset(-1);
-
-                    Some(ptr::read(self.end))
-                }
+                Some(ptr::read(self.end))
             }
         }
     }
@@ -2175,8 +2167,8 @@ impl<'a, T> Drop for Drain<'a, T> {
                 let start = source_vec.len();
                 let tail = self.tail_start;
                 if tail != start {
-                    let src = source_vec.as_ptr().offset(tail as isize);
-                    let dst = source_vec.as_mut_ptr().offset(start as isize);
+                    let src = source_vec.as_ptr().add(tail);
+                    let dst = source_vec.as_mut_ptr().add(start);
                     ptr::copy(src, dst, self.tail_len);
                 }
                 source_vec.set_len(start + self.tail_len);
@@ -2275,7 +2267,7 @@ impl<'a, T> Drain<'a, T> {
         let range_start = vec.len();
         let range_end = self.tail_start;
         let range_slice = slice::from_raw_parts_mut(
-            vec.as_mut_ptr().offset(range_start as isize),
+            vec.as_mut_ptr().add(range_start),
             range_end - range_start);
 
         let mut count = range_start;
@@ -2297,8 +2289,8 @@ impl<'a, T> Drain<'a, T> {
         vec.reserve(extra_capacity);
 
         let new_tail_start = self.tail_start + extra_capacity;
-        let src = vec.as_ptr().offset(self.tail_start as isize);
-        let dst = vec.as_mut_ptr().offset(new_tail_start as isize);
+        let src = vec.as_ptr().add(self.tail_start);
+        let dst = vec.as_mut_ptr().add(new_tail_start);
         ptr::copy(src, dst, self.tail_len);
         self.tail_start = new_tail_start;
     }

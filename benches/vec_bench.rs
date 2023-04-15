@@ -14,7 +14,7 @@ extern crate test;
 extern crate thincollections;
 
 use std::rc::Rc;
-use test::stats::Summary;
+
 
 use criterion::{Bencher, black_box, Criterion, criterion_group, criterion_main};
 

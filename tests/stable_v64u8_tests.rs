@@ -12,8 +12,8 @@
 #[macro_use]
 extern crate thincollections;
 
-use thincollections::thin_v64::V64;
 use thincollections::thin_v64::ToV64;
+use thincollections::thin_v64::V64;
 
 #[test]
 fn test_reserve() {
@@ -83,13 +83,13 @@ fn test_slice_from_mut() {
     let mut values: V64<u8> = v64![1, 2, 3, 4, 5];
     {
         let slice = &mut values[2..];
-        assert!(slice == [3, 4, 5]);
+        assert_eq!(slice, [3, 4, 5]);
         for p in slice {
             *p += 2;
         }
     }
 
-    assert!(values == [1, 2, 5, 6, 7]);
+    assert_eq!(values, [1, 2, 5, 6, 7]);
 }
 
 #[test]
@@ -97,13 +97,13 @@ fn test_slice_to_mut() {
     let mut values: V64<u8> = v64![1, 2, 3, 4, 5];
     {
         let slice = &mut values[..2];
-        assert!(slice == [1, 2]);
+        assert_eq!(slice, [1, 2]);
         for p in slice {
             *p += 1;
         }
     }
 
-    assert!(values == [2, 3, 3, 4, 5]);
+    assert_eq!(values, [2, 3, 3, 4, 5]);
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn test_split_at_mut() {
         let (left, right) = values.split_at_mut(2);
         {
             let left: &[_] = left;
-            assert!(&left[..left.len()] == &[1, 2]);
+            assert_eq!(&left[..left.len()], &[1, 2]);
         }
         for p in left {
             *p += 1;
@@ -121,7 +121,7 @@ fn test_split_at_mut() {
 
         {
             let right: &[_] = right;
-            assert!(&right[..right.len()] == &[3, 4, 5]);
+            assert_eq!(&right[..right.len()], &[3, 4, 5]);
         }
         for p in right {
             *p += 2;
@@ -141,7 +141,7 @@ fn test_clone() {
     let z = w.clone();
     assert_eq!(w, z);
     // they should be disjoint in memory.
-    assert!(w.as_ptr() != z.as_ptr())
+    assert_ne!(w.as_ptr(), z.as_ptr())
 }
 
 #[test]
@@ -230,7 +230,7 @@ fn test_v64_truncate_drop() {
 #[test]
 fn test_index() {
     let v64: V64<u8> = v64![1, 2, 3];
-    assert!(v64[1] == 2);
+    assert_eq!(v64[1], 2);
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn test_splice_unbounded() {
 fn test_splice_forget() {
     let mut v: V64<u8> = v64![1, 2, 3, 4, 5];
     let a: [u8; 3] = [10, 11, 12];
-    ::std::mem::forget(v.splice(2..4, a.iter().cloned()));
+    std::mem::forget(v.splice(2..4, a.iter().cloned()));
     assert_eq!(v, &[1, 2]);
 }
 

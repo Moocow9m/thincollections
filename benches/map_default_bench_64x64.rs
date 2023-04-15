@@ -15,7 +15,7 @@ extern crate thincollections;
 
 use std::collections::HashMap;
 
-use criterion::{BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main, PlottingBackend};
+use criterion::{BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main};
 use criterion::measurement::WallTime;
 use rand::*;
 use rand::prelude::SliceRandom;
@@ -125,15 +125,6 @@ fn benchmpsa_thin_insert(c: &mut Criterion) {
     group.finish();
 }
 
-fn benchmpsa_std_insert(group: &mut BenchmarkGroup<WallTime>) {
-    let size = 1_500_000;
-    for p in 0..20 {
-        group.throughput(criterion::Throughput::Elements(p));
-        group.bench_function(BenchmarkId::new("Std", p), |b| b.iter(|| create_std_triv(size, p)));
-    }
-}
-
-
 fn get_thin64_from_vec(map: &ThinMap<i64, u64>, keys: &[i64]) {
     let mut sum = 0;
     for x in keys.iter() {
@@ -152,22 +143,6 @@ fn get_std64_from_vec(map: &HashMap<i64, u64>, keys: &[i64]) {
         sum += option.unwrap();
     }
     black_box(sum);
-}
-
-fn inserts_vec_thin(v: &Vec<i64>) {
-    let mut map: ThinMap<i64, u64> = ThinMap::new();
-    for i in v.iter() {
-        map.insert(*i, 1);
-    }
-    black_box(map.len());
-}
-
-fn inserts_vec_std(v: &Vec<i64>) {
-    let mut map: HashMap<i64, u64> = HashMap::new();
-    for i in v.iter() {
-        map.insert(*i, 1);
-    }
-    black_box(map.len());
 }
 
 fn create_thin(size: u64, shift: u64) -> ThinMap<i64, u64> {
@@ -216,11 +191,6 @@ fn create_std64_from_vec(size: u64, v: &[i64]) -> HashMap<i64, u64> {
     std_map
 }
 
-fn inserts_seq_std64_var(size: i64, shift: u64) {
-    let mut hash_map = create_std(size as u64, shift);
-    black_box(hash_map.len());
-}
-
 fn create_std(size: u64, shift: u64) -> HashMap<i64, u64> {
     let mut hash_map = HashMap::new();
     let mut c = 0;
@@ -232,18 +202,7 @@ fn create_std(size: u64, shift: u64) -> HashMap<i64, u64> {
     hash_map
 }
 
-fn create_std_triv(size: u64, shift: u64) -> HashMap<i64, u64, TrivialOneFieldHasherBuilder> {
-    let mut hash_map = HashMap::with_hasher(TrivialOneFieldHasherBuilder::new());
-    let mut c = 0;
-    let x = size as i64;
-    while c < x {
-        hash_map.insert(c << shift, c as u64);
-        c = c + 1;
-    }
-    hash_map
-}
-
-fn get_seq_thin64_var(map: &ThinMap<i64, u64>, size: u64, shift: u64) {
+fn get_seq_thin64_var(map: &ThinMap<i64, u64>, size: u64, _shift: u64) {
     let mut c = 1;
     let mut x = 0;
     let y = size as i64;
@@ -253,7 +212,7 @@ fn get_seq_thin64_var(map: &ThinMap<i64, u64>, size: u64, shift: u64) {
     }
 }
 
-fn get_seq_std64_var(map: &HashMap<i64, u64>, size: u64, shift: u64) {
+fn get_seq_std64_var(map: &HashMap<i64, u64>, size: u64, _shift: u64) {
     let mut c = 1;
     let mut x = 0;
     let y = size as i64;

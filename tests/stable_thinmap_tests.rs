@@ -11,10 +11,11 @@
 
 extern crate thincollections;
 
+use std::ptr;
+
 use thincollections::thin_hasher::*;
 use thincollections::thin_map::ThinMap;
 use thincollections::thin_sentinel::ThinSentinel;
-use std::ptr;
 
 #[derive(PartialEq, Eq, Hash)]
 struct Color {
@@ -37,13 +38,13 @@ impl ThinSentinel for Color {
 fn custom_key()
 {
     let mut thin_map = ThinMap::new();
-    thin_map.insert(Color {r: 0, g: 0, b: 0}, 17);
-    thin_map.insert(Color {r: 0, g: 0, b: 1}, 42);
-    thin_map.insert(Color {r: 1, g: 1, b: 1}, 1);
+    thin_map.insert(Color { r: 0, g: 0, b: 0 }, 17);
+    thin_map.insert(Color { r: 0, g: 0, b: 1 }, 42);
+    thin_map.insert(Color { r: 1, g: 1, b: 1 }, 1);
 
-    assert_eq!(17, *thin_map.get(&Color {r: 0, g: 0, b: 0}).unwrap());
-    assert_eq!(42, *thin_map.get(&Color {r: 0, g: 0, b: 1}).unwrap());
-    assert_eq!(1, *thin_map.get(&Color {r: 1, g: 1, b: 1}).unwrap());
+    assert_eq!(17, *thin_map.get(&Color { r: 0, g: 0, b: 0 }).unwrap());
+    assert_eq!(42, *thin_map.get(&Color { r: 0, g: 0, b: 1 }).unwrap());
+    assert_eq!(1, *thin_map.get(&Color { r: 1, g: 1, b: 1 }).unwrap());
 }
 
 #[test]

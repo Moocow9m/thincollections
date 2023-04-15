@@ -14,25 +14,25 @@
 //! is small (`total number of elements x element size < 7 bytes`)
 use std::{
     alloc::{self, Layout},
-    mem, ptr, marker,
+    marker, mem, ptr,
 };
-use std::fmt::{self};
-use std::cmp;
-use std::ops::Index;
-use std::iter::FromIterator;
-use std::ops::Deref;
-use std::slice;
-use std::slice::SliceIndex;
-use std::ptr::NonNull;
-use std::ops::DerefMut;
-use std::ops::IndexMut;
-use std::borrow::Cow;
-use std::iter::FusedIterator;
-use std::ops::RangeBounds;
-use std::ops::Bound::*;
 use std::borrow::Borrow;
 use std::borrow::BorrowMut;
+use std::borrow::Cow;
+use std::cmp;
+use std::fmt::{self};
+use std::iter::FromIterator;
+use std::iter::FusedIterator;
 use std::num::NonZeroU64;
+use std::ops::Bound::*;
+use std::ops::Deref;
+use std::ops::DerefMut;
+use std::ops::Index;
+use std::ops::IndexMut;
+use std::ops::RangeBounds;
+use std::ptr::NonNull;
+use std::slice;
+use std::slice::SliceIndex;
 
 /// A thin (64bit) vector. Guaranteed to be a 64 bit smart pointer.
 ///
@@ -154,17 +154,17 @@ impl<T> V64<T> {
     /// ```
     #[inline]
     pub fn capacity(&self) -> usize {
-        if mem::size_of::<T>() == 0 { return <usize>::max_value(); }
+        if mem::size_of::<T>() == 0 { return <usize>::MAX; }
         match self.control() {
             Control::Heap(ptr) => {
                 unsafe {
                     let len_ptr = ptr as *mut usize;
-                    return *len_ptr.add(1);
+                    *len_ptr.add(1)
                 }
             }
             Control::Stack(_) => {
                 let s = mem::size_of::<T>();
-                return if s == 0 { 7 } else { 7 / s };
+                if s == 0 { 7 } else { 7 / s }
             }
         }
     }
@@ -454,10 +454,10 @@ impl<T> V64<T> {
                 unsafe {
                     let header_bytes = cmp::max(mem::size_of::<usize>() * 2, mem::align_of::<T>());
                     let cap_ptr: *mut usize = (ptr as *mut usize).add(1);
-                    return header_bytes + *cap_ptr * mem::size_of::<T>();
+                    header_bytes + *cap_ptr * mem::size_of::<T>()
                 }
             }
-            Control::Stack(_len) => { return 0; }
+            Control::Stack(_len) => { 0 }
         }
     }
 
@@ -625,7 +625,7 @@ impl<T> V64<T> {
             let len = *len_ptr;
             // The spot to put the new value
             {
-                let p = self.as_mut_ptr().offset(index as isize);
+                let p = self.as_mut_ptr().add(index);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
                 ptr::copy(p, p.offset(1), len - index);
@@ -641,7 +641,7 @@ impl<T> V64<T> {
         unsafe {
             // The spot to put the new value
             {
-                let p = self.as_mut_ptr().offset(index as isize);
+                let p = self.as_mut_ptr().add(index);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
                 ptr::copy(p, p.offset(1), len - index);
@@ -726,7 +726,7 @@ impl<T> V64<T> {
             let ret;
             {
                 // the place we are taking from.
-                let ptr = array.offset(index as isize);
+                let ptr = array.add(index);
                 // copy it out, unsafely having a copy of the value on
                 // the stack and in the vector at the same time.
                 ret = ptr::read(ptr);
@@ -940,8 +940,8 @@ impl<T> V64<T> {
             let mut w: usize = 1;
 
             while r < ln {
-                let p_r = p.offset(r as isize);
-                let p_wm1 = p.offset((w - 1) as isize);
+                let p_r = p.add(r);
+                let p_wm1 = p.add(w - 1);
                 if !same_bucket(&mut *p_r, &mut *p_wm1) {
                     if r != w {
                         let p_w = p_wm1.offset(1);
@@ -1009,8 +1009,8 @@ impl<T> V64<T> {
     pub fn len(&self) -> usize {
         if mem::size_of::<T>() == 0 { return (self.u.get() & (ZST_MASK - 1)) as usize; }
         match self.control() {
-            Control::Heap(ptr) => { unsafe { return *(ptr as *mut usize); } }
-            Control::Stack(len) => { return len; }
+            Control::Heap(ptr) => { unsafe { *(ptr as *mut usize) } }
+            Control::Stack(len) => { len }
         }
     }
 
@@ -1035,7 +1035,7 @@ impl<T> V64<T> {
         if c == 0 {
             return Control::Heap(self.u.get() as usize as *mut u8);
         }
-        return Control::Stack((c & 7) as usize);
+        Control::Stack((c & 7) as usize)
     }
 
     /// Appends an element to the back of a collection.
@@ -1155,7 +1155,7 @@ impl<T> V64<T> {
         unsafe {
             let ret;
             {
-                let ptr = array.offset((len - 1) as isize);
+                let ptr = array.add(len - 1);
                 ret = ptr::read(ptr);
             }
             Some(ret)
@@ -1309,7 +1309,7 @@ impl<T> V64<T> {
             self.set_len(at);
             other.set_len(other_len);
 
-            ptr::copy_nonoverlapping(self.as_ptr().offset(at as isize),
+            ptr::copy_nonoverlapping(self.as_ptr().add(at),
                                      other.as_mut_ptr(),
                                      other.len());
         }
@@ -1490,7 +1490,7 @@ impl<T> V64<T> {
             self.set_len(start);
             // Use the borrow in the IterMut to indicate borrowing behavior of the
             // whole Drain iterator (like &mut T).
-            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().offset(start as isize),
+            let range_slice = slice::from_raw_parts_mut(self.as_mut_ptr().add(start),
                                                         end - start);
             Drain {
                 tail_start: end,
@@ -1641,7 +1641,7 @@ impl<T> V64<T> {
         //      }
         if mem::size_of::<T>() == 0 {
             let mut count = 0;
-            while let Some(_element) = iterator.next() { count += 1; }
+            for _element in iterator.by_ref() { count += 1; }
             unsafe {
                 let len = self.len();
                 self.set_len(len + count);
@@ -1692,7 +1692,7 @@ impl<T> V64<T> {
             let align = cmp::max(16, mem::align_of::<T>());
             let layout = Layout::from_size_align(mem::size_of::<T>() * capacity + header_bytes, align).unwrap();
             let buffer = alloc::alloc(layout);
-            assert!(buffer as usize & 15 == 0); // check the allocator respects our assumptions
+            assert_eq!(buffer as usize & 15, 0); // check the allocator respects our assumptions
             ptr::write(buffer as *mut usize, 0); // current length
             ptr::write((buffer as *mut usize).add(1), capacity);
             buffer
@@ -1880,8 +1880,8 @@ impl<T> V64<T> {
     /// Panics if the the size or alignment of X and T are different.
     ///
     pub unsafe fn transmute<X>(self) -> V64<X> {
-        assert!(mem::size_of::<X>() == mem::size_of::<T>());
-        assert!(mem::align_of::<X>() == mem::align_of::<T>());
+        assert_eq!(mem::size_of::<X>(), mem::size_of::<T>());
+        assert_eq!(mem::align_of::<X>(), mem::align_of::<T>());
         assert!(!mem::needs_drop::<X>());
         assert!(!mem::needs_drop::<T>());
         let v: V64<X> = V64 { u: self.u, _marker: marker::PhantomData };
@@ -1962,8 +1962,6 @@ macro_rules! __impl_slice_eq1 {
         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
             #[inline]
             fn eq(&self, other: &$Rhs) -> bool { self[..] == other[..] }
-            #[inline]
-            fn ne(&self, other: &$Rhs) -> bool { self[..] != other[..] }
         }
     }
 }
@@ -2089,7 +2087,7 @@ impl<T> IntoIterator for V64<T> {
             let len_ptr = self.u.get() as usize as *mut u8 as *mut usize;
             let header_bytes = cmp::max(mem::size_of::<usize>() * 2, mem::align_of::<T>());
             let begin = (len_ptr as *mut u8).add(header_bytes) as *mut T;
-            let end = begin.offset(*len_ptr as isize) as *const T;
+            let end = begin.add(*len_ptr) as *const T;
 
             let buf = len_ptr as *mut u8;
             mem::forget(self);
@@ -2180,20 +2178,18 @@ impl<T> Iterator for IntoIter<T> {
         unsafe {
             if self.ptr as *const _ == self.end {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                // cast to u8, so we add 1, not zero
+                self.ptr = (self.ptr as *mut u8).add(1) as *mut T;
+
+                // Use a non-null pointer value
+                // (self.ptr might be null because of wrapping)
+                Some(ptr::read(NonNull::dangling().as_ptr()))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    // cast to u8, so we add 1, not zero
-                    self.ptr = (self.ptr as *mut u8).add(1) as *mut T;
+                let old = self.ptr;
+                self.ptr = self.ptr.offset(1);
 
-                    // Use a non-null pointer value
-                    // (self.ptr might be null because of wrapping)
-                    Some(ptr::read(NonNull::dangling().as_ptr()))
-                } else {
-                    let old = self.ptr;
-                    self.ptr = self.ptr.offset(1);
-
-                    Some(ptr::read(old))
-                }
+                Some(ptr::read(old))
             }
         }
     }
@@ -2220,18 +2216,16 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
         unsafe {
             if self.end == self.ptr {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                self.end = (self.end as *const i8).sub(1) as *mut T;
+
+                // Use a non-null pointer value
+                // (self.end might be null because of wrapping)
+                Some(ptr::read(NonNull::dangling().as_ptr()))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    self.end = (self.end as *const i8).sub(1) as *mut T;
+                self.end = self.end.offset(-1);
 
-                    // Use a non-null pointer value
-                    // (self.end might be null because of wrapping)
-                    Some(ptr::read(NonNull::dangling().as_ptr()))
-                } else {
-                    self.end = self.end.offset(-1);
-
-                    Some(ptr::read(self.end))
-                }
+                Some(ptr::read(self.end))
             }
         }
     }
@@ -2418,8 +2412,8 @@ impl<'a, T> Drop for Drain<'a, T> {
                 let start = source_vec.len();
                 let tail = self.tail_start;
                 if tail != start {
-                    let src = source_vec.as_ptr().offset(tail as isize);
-                    let dst = source_vec.as_mut_ptr().offset(start as isize);
+                    let src = source_vec.as_ptr().add(tail);
+                    let dst = source_vec.as_mut_ptr().add(start);
                     ptr::copy(src, dst, self.tail_len);
                 }
                 source_vec.set_len(start + self.tail_len);
@@ -2518,7 +2512,7 @@ impl<'a, T> Drain<'a, T> {
         let range_start = vec.len();
         let range_end = self.tail_start;
         let range_slice = slice::from_raw_parts_mut(
-            vec.as_mut_ptr().offset(range_start as isize),
+            vec.as_mut_ptr().add(range_start),
             range_end - range_start);
 
         let mut count = range_start;
@@ -2540,8 +2534,8 @@ impl<'a, T> Drain<'a, T> {
         vec.reserve(extra_capacity);
 
         let new_tail_start = self.tail_start + extra_capacity;
-        let src = vec.as_ptr().offset(self.tail_start as isize);
-        let dst = vec.as_mut_ptr().offset(new_tail_start as isize);
+        let src = vec.as_ptr().add(self.tail_start);
+        let dst = vec.as_mut_ptr().add(new_tail_start);
         ptr::copy(src, dst, self.tail_len);
         self.tail_start = new_tail_start;
     }

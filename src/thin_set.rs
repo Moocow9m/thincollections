@@ -13,20 +13,20 @@
 //! `ThinSet` uses `ThinMap` underneath, so it inherits all the properties of
 //! `ThinMap`.
 
-use crate::thin_sentinel::*;
-use crate::thin_hasher::*;
-use crate::thin_map::*;
-
+use std::fmt::{self};
 use std::hash::BuildHasher;
 use std::hash::Hash;
-use std::fmt::{self};
+use std::iter::Chain;
 use std::iter::FromIterator;
 use std::iter::FusedIterator;
-use std::ops::BitOr;
 use std::ops::BitAnd;
+use std::ops::BitOr;
 use std::ops::BitXor;
 use std::ops::Sub;
-use std::iter::Chain;
+
+use crate::thin_hasher::*;
+use crate::thin_map::*;
+use crate::thin_sentinel::*;
 
 /// A hash set implemented as a `ThinMap` where the value is `()`.
 ///
@@ -85,12 +85,12 @@ use std::iter::Chain;
 /// ```
 /// use thincollections::thin_set::ThinSet;
 /// use thincollections::thin_sentinel::ThinSentinel;
-/// 
+///
 /// #[derive(Hash, Eq, PartialEq, Debug)]
 /// struct Color {
 ///     r: u8, g: u8, b: u8
 /// }
-/// 
+///
 /// impl ThinSentinel for Color {
 ///     fn thin_sentinel_zero() -> Self {
 ///         Color {r: 0, g: 0, b: 0}
@@ -119,7 +119,7 @@ use std::iter::Chain;
 /// ```
 /// use thincollections::thin_set::ThinSet;
 ///
-/// fn main() {
+/// fn init() {
 ///     let nums: ThinSet<i32> =
 ///         [ 2, 4, 6, 8 ].iter().cloned().collect();
 ///     // use the values stored in the set
@@ -526,7 +526,7 @@ impl<T, S> ThinSet<T, S>
     pub fn get(&self, value: &T) -> Option<&T>
     {
         let option = self.map.get_key_value(value);
-        if option.is_none() { return None; }
+        option?;
         Some(option.unwrap().0)
     }
 
@@ -654,7 +654,7 @@ impl<T, S> ThinSet<T, S>
     pub fn take(&mut self, value: &T) -> Option<T>
     {
         let option = self.map.remove_entry(value);
-        if option.is_none() { return None; }
+        option.as_ref()?;
         Some(option.unwrap().0)
     }
 
@@ -1234,8 +1234,8 @@ impl<'a, T, S> Iterator for Union<'a, T, S>
 
 #[cfg(test)]
 mod test_set {
-    use super::ThinSet;
     use super::super::thin_hasher::OneFieldHasherBuilder;
+    use super::ThinSet;
 
     #[test]
     fn test_zero_capacities() {
@@ -1483,7 +1483,7 @@ mod test_set {
         s2.insert(1);
         s2.insert(2);
 
-        assert!(s1 != s2);
+        assert_ne!(s1, s2);
 
         s2.insert(3);
 
@@ -1529,7 +1529,7 @@ mod test_set {
                 let mut d = s.drain();
                 for (i, x) in d.by_ref().take(50).enumerate() {
                     last_i = i;
-                    assert!(x != 0);
+                    assert_ne!(x, 0);
                 }
                 assert_eq!(last_i, 49);
             }

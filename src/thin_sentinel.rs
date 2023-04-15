@@ -9,6 +9,8 @@
 
 //! A special trait required for `ThinMap` and `ThinSet`
 
+use std::any::TypeId;
+
 /// `ThinMap` and `ThinSet` require two sepcial values to denote either an empty
 /// or a removed element. This does NOT preclude these elements from being stored
 /// in the map/set.
@@ -78,7 +80,6 @@ macro_rules! impl_sentinel_for_primitive {
     )
 }
 
-use std::any::TypeId;
 //
 //pub trait ThinSentinel {
 //    const ZERO: Self;

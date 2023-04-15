@@ -12,12 +12,12 @@
 #[macro_use]
 extern crate thincollections;
 
-use thincollections::thin_vec::ThinVec;
-use thincollections::thin_vec::Drain;
-use thincollections::thin_vec::IntoIter;
-
 use std::mem::size_of;
 use std::usize;
+
+use thincollections::thin_vec::Drain;
+use thincollections::thin_vec::IntoIter;
+use thincollections::thin_vec::ThinVec;
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -31,12 +31,12 @@ impl<'a> Drop for DropCounter<'a> {
 
 #[test]
 fn test_thinvec_sizeof() {
-    assert!(size_of::<ThinVec<u8>>() == size_of::<usize>());
+    assert_eq!(size_of::<ThinVec<u8>>(), size_of::<usize>());
 }
 
 #[test]
 fn test_thinvec_sizeof_option() {
-    assert!(size_of::<Option<ThinVec<u8>>>() == size_of::<usize>());
+    assert_eq!(size_of::<Option<ThinVec<u8>>>(), size_of::<usize>());
 }
 
 #[test]
@@ -162,13 +162,13 @@ fn test_slice_from_mut() {
     let mut values = thinvec![1, 2, 3, 4, 5];
     {
         let slice = &mut values[2..];
-        assert!(slice == [3, 4, 5]);
+        assert_eq!(slice, [3, 4, 5]);
         for p in slice {
             *p += 2;
         }
     }
 
-    assert!(values == [1, 2, 5, 6, 7]);
+    assert_eq!(values, [1, 2, 5, 6, 7]);
 }
 
 #[test]
@@ -176,13 +176,13 @@ fn test_slice_to_mut() {
     let mut values = thinvec![1, 2, 3, 4, 5];
     {
         let slice = &mut values[..2];
-        assert!(slice == [1, 2]);
+        assert_eq!(slice, [1, 2]);
         for p in slice {
             *p += 1;
         }
     }
 
-    assert!(values == [2, 3, 3, 4, 5]);
+    assert_eq!(values, [2, 3, 3, 4, 5]);
 }
 
 #[test]
@@ -192,7 +192,7 @@ fn test_split_at_mut() {
         let (left, right) = values.split_at_mut(2);
         {
             let left: &[_] = left;
-            assert!(&left[..left.len()] == &[1, 2]);
+            assert_eq!(&left[..left.len()], &[1, 2]);
         }
         for p in left {
             *p += 1;
@@ -200,7 +200,7 @@ fn test_split_at_mut() {
 
         {
             let right: &[_] = right;
-            assert!(&right[..right.len()] == &[3, 4, 5]);
+            assert_eq!(&right[..right.len()], &[3, 4, 5]);
         }
         for p in right {
             *p += 2;
@@ -220,7 +220,7 @@ fn test_clone() {
     let z = w.clone();
     assert_eq!(w, z);
     // they should be disjoint in memory.
-    assert!(w.as_ptr() != z.as_ptr())
+    assert_ne!(w.as_ptr(), z.as_ptr())
 }
 
 #[test]
@@ -409,7 +409,7 @@ fn test_thinvec_truncate_fail() {
 #[test]
 fn test_index() {
     let thinvec = thinvec![1, 2, 3];
-    assert!(thinvec[1] == 2);
+    assert_eq!(thinvec[1], 2);
 }
 
 #[test]
@@ -423,35 +423,35 @@ fn test_index_out_of_bounds() {
 #[should_panic]
 fn test_slice_out_of_bounds_1() {
     let x = thinvec![1, 2, 3, 4, 5];
-    &x[!0..];
+    let _ = &x[!0..];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_2() {
     let x = thinvec![1, 2, 3, 4, 5];
-    &x[..6];
+    let _ = &x[..6];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_3() {
     let x = thinvec![1, 2, 3, 4, 5];
-    &x[!0..4];
+    let _ = &x[!0..4];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_4() {
     let x = thinvec![1, 2, 3, 4, 5];
-    &x[1..6];
+    let _ = &x[1..6];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_5() {
     let x = thinvec![1, 2, 3, 4, 5];
-    &x[3..2];
+    let _ = &x[3..2];
 }
 
 #[test]
@@ -670,7 +670,7 @@ fn test_splice_unbounded() {
 fn test_splice_forget() {
     let mut v = thinvec![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    ::std::mem::forget(v.splice(2..4, a.iter().cloned()));
+    std::mem::forget(v.splice(2..4, a.iter().cloned()));
     assert_eq!(v, &[1, 2]);
 }
 
@@ -770,22 +770,6 @@ fn assert_covariance() {
     }
 }
 
-//#[test]
-fn from_into_inner() {
-    let thinvec = thinvec![1, 2, 3];
-    let ptr = thinvec.as_ptr();
-    let thinvec = thinvec.into_iter().collect::<ThinVec<_>>();
-    assert_eq!(thinvec, [1, 2, 3]);
-    assert_eq!(thinvec.as_ptr(), ptr);
-
-    let ptr = &thinvec[1] as *const _;
-    let mut it = thinvec.into_iter();
-    it.next().unwrap();
-    let thinvec = it.collect::<ThinVec<_>>();
-    assert_eq!(thinvec, [2, 3]);
-    assert!(ptr != thinvec.as_ptr());
-}
-
 #[test]
 fn overaligned_allocations() {
     #[repr(align(256))]
@@ -793,11 +777,11 @@ fn overaligned_allocations() {
     let mut v = thinvec![Foo(273)];
     for i in 0..0x1000 {
         v.reserve_exact(i);
-        assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert_eq!(v[0].0, 273);
+        assert_eq!(v.as_ptr() as usize & 0xff, 0);
         v.shrink_to_fit();
-        assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert_eq!(v[0].0, 273);
+        assert_eq!(v.as_ptr() as usize & 0xff, 0);
     }
 }
 

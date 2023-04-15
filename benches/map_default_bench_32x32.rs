@@ -15,25 +15,13 @@ extern crate thincollections;
 
 use std::collections::HashMap;
 
-use criterion::{Bencher, BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main, PlottingBackend};
+use criterion::{BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main};
 use criterion::measurement::WallTime;
 use rand::*;
 use rand::prelude::SliceRandom;
 use rand_xoshiro::Xoshiro512StarStar;
 
 use thincollections::thin_map::ThinMap;
-
-fn run_inserts_rnd_thin_var(b: &mut Bencher, size: i32) {
-    let mut vec = create_rand_vec(size);
-//    let mut rng1 = Xoshiro512StarStar::seed_from_u64(0x1234_5678_9ABC_DEF1);
-//    vec.shuffle(&mut rng1);
-    b.iter(|| inserts_vec_thin(&vec));
-}
-
-fn run_inserts_rnd_std_var(b: &mut Bencher, size: i32) {
-    let vec = create_rand_vec(size);
-    b.iter(|| inserts_vec_std(&vec));
-}
 
 fn create_rand_vec(size: i32) -> Vec<i32> {
     let mut rng1 = Xoshiro512StarStar::seed_from_u64(0x1234_5678_9ABC_DEF1);
@@ -146,28 +134,6 @@ fn get_std_from_vec(map: &HashMap<i32, u32>, keys: &[i32]) {
     black_box(sum);
 }
 
-fn inserts_vec_thin(v: &Vec<i32>) {
-    let mut map: ThinMap<i32, u32> = ThinMap::new();
-    for i in v.iter() {
-        map.insert(*i, 1);
-    }
-    black_box(map.len());
-}
-
-fn inserts_vec_std(v: &Vec<i32>) {
-    let mut map: HashMap<i32, u32> = HashMap::new();
-    for i in v.iter() {
-        map.insert(*i, 1);
-    }
-    black_box(map.len());
-}
-
-//
-fn inserts_seq_thin_var(size: i32, shift: u32) {
-    let mut thin_map = create_thin(size as u32, shift);
-    black_box(thin_map.len());
-}
-
 fn create_thin(size: u32, shift: u32) -> ThinMap<i32, u32> {
     let mut thin_map = ThinMap::new();
     let mut c = 0;
@@ -203,11 +169,6 @@ fn create_std_from_vec(size: u32, v: &[i32]) -> HashMap<i32, u32> {
     std_map
 }
 
-fn inserts_seq_std_var(size: i32, shift: u32) {
-    let mut hash_map = create_std(size as u32, shift);
-    black_box(hash_map.len());
-}
-
 fn create_std(size: u32, shift: u32) -> HashMap<i32, u32> {
     let mut hash_map = HashMap::new();
     let mut c = 0;
@@ -219,7 +180,7 @@ fn create_std(size: u32, shift: u32) -> HashMap<i32, u32> {
     hash_map
 }
 
-fn get_seq_thin_var(map: &ThinMap<i32, u32>, size: u32, shift: u32) {
+fn get_seq_thin_var(map: &ThinMap<i32, u32>, size: u32, _shift: u32) {
     let mut c = 1;
     let mut x = 0;
     let y = size as i32;
@@ -229,7 +190,7 @@ fn get_seq_thin_var(map: &ThinMap<i32, u32>, size: u32, shift: u32) {
     }
 }
 
-fn get_seq_std_var(map: &HashMap<i32, u32>, size: u32, shift: u32) {
+fn get_seq_std_var(map: &HashMap<i32, u32>, size: u32, _shift: u32) {
     let mut c = 1;
     let mut x = 0;
     let y = size as i32;

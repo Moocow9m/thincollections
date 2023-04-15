@@ -12,12 +12,12 @@
 #[macro_use]
 extern crate thincollections;
 
-use thincollections::thin_v64::V64;
-use thincollections::thin_v64::Drain;
-use thincollections::thin_v64::IntoIter;
-
 use std::mem::size_of;
 use std::usize;
+
+use thincollections::thin_v64::Drain;
+use thincollections::thin_v64::IntoIter;
+use thincollections::thin_v64::V64;
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -31,12 +31,12 @@ impl<'a> Drop for DropCounter<'a> {
 
 #[test]
 fn test_v64_sizeof() {
-    assert!(size_of::<V64<u8>>() == size_of::<u64>());
+    assert_eq!(size_of::<V64<u8>>(), size_of::<u64>());
 }
 
 #[test]
 fn test_v64_sizeof_option() {
-    assert!(size_of::<Option<V64<u8>>>() == size_of::<u64>());
+    assert_eq!(size_of::<Option<V64<u8>>>(), size_of::<u64>());
 }
 
 #[test]
@@ -162,13 +162,13 @@ fn test_slice_from_mut() {
     let mut values = v64![1, 2, 3, 4, 5];
     {
         let slice = &mut values[2..];
-        assert!(slice == [3, 4, 5]);
+        assert_eq!(slice, [3, 4, 5]);
         for p in slice {
             *p += 2;
         }
     }
 
-    assert!(values == [1, 2, 5, 6, 7]);
+    assert_eq!(values, [1, 2, 5, 6, 7]);
 }
 
 #[test]
@@ -176,13 +176,13 @@ fn test_slice_to_mut() {
     let mut values = v64![1, 2, 3, 4, 5];
     {
         let slice = &mut values[..2];
-        assert!(slice == [1, 2]);
+        assert_eq!(slice, [1, 2]);
         for p in slice {
             *p += 1;
         }
     }
 
-    assert!(values == [2, 3, 3, 4, 5]);
+    assert_eq!(values, [2, 3, 3, 4, 5]);
 }
 
 #[test]
@@ -192,7 +192,7 @@ fn test_split_at_mut() {
         let (left, right) = values.split_at_mut(2);
         {
             let left: &[_] = left;
-            assert!(&left[..left.len()] == &[1, 2]);
+            assert_eq!(&left[..left.len()], &[1, 2]);
         }
         for p in left {
             *p += 1;
@@ -200,7 +200,7 @@ fn test_split_at_mut() {
 
         {
             let right: &[_] = right;
-            assert!(&right[..right.len()] == &[3, 4, 5]);
+            assert_eq!(&right[..right.len()], &[3, 4, 5]);
         }
         for p in right {
             *p += 2;
@@ -220,7 +220,7 @@ fn test_clone() {
     let z = w.clone();
     assert_eq!(w, z);
     // they should be disjoint in memory.
-    assert!(w.as_ptr() != z.as_ptr())
+    assert_ne!(w.as_ptr(), z.as_ptr())
 }
 
 #[test]
@@ -409,7 +409,7 @@ fn test_v64_truncate_fail() {
 #[test]
 fn test_index() {
     let v64 = v64![1, 2, 3];
-    assert!(v64[1] == 2);
+    assert_eq!(v64[1], 2);
 }
 
 #[test]
@@ -423,35 +423,35 @@ fn test_index_out_of_bounds() {
 #[should_panic]
 fn test_slice_out_of_bounds_1() {
     let x = v64![1, 2, 3, 4, 5];
-    &x[!0..];
+    let _ = &x[!0..];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_2() {
     let x = v64![1, 2, 3, 4, 5];
-    &x[..6];
+    let _ = &x[..6];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_3() {
     let x = v64![1, 2, 3, 4, 5];
-    &x[!0..4];
+    let _ = &x[!0..4];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_4() {
     let x = v64![1, 2, 3, 4, 5];
-    &x[1..6];
+    let _ = &x[1..6];
 }
 
 #[test]
 #[should_panic]
 fn test_slice_out_of_bounds_5() {
     let x = v64![1, 2, 3, 4, 5];
-    &x[3..2];
+    let _ = &x[3..2];
 }
 
 #[test]
@@ -670,7 +670,7 @@ fn test_splice_unbounded() {
 fn test_splice_forget() {
     let mut v = v64![1, 2, 3, 4, 5];
     let a = [10, 11, 12];
-    ::std::mem::forget(v.splice(2..4, a.iter().cloned()));
+    std::mem::forget(v.splice(2..4, a.iter().cloned()));
     assert_eq!(v, &[1, 2]);
 }
 
@@ -793,11 +793,11 @@ fn overaligned_allocations() {
     let mut v = v64![Foo(273)];
     for i in 0..0x1000 {
         v.reserve_exact(i);
-        assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert_eq!(v[0].0, 273);
+        assert_eq!(v.as_ptr() as usize & 0xff, 0);
         v.shrink_to_fit();
-        assert!(v[0].0 == 273);
-        assert!(v.as_ptr() as usize & 0xff == 0);
+        assert_eq!(v[0].0, 273);
+        assert_eq!(v.as_ptr() as usize & 0xff, 0);
     }
 }
 
@@ -1013,7 +1013,7 @@ fn test_reserve_exact() {
 
 #[test]
 fn test_append_empty() {
-    let mut a:V64<u64> = v64![1];
+    let mut a: V64<u64> = v64![1];
     let mut b = v64![];
     a.append(&mut b);
     assert_eq!(1, a.len());

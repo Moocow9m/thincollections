@@ -12,7 +12,7 @@
 //! # `ThinMap`: a fast map with lower memory usage for small key values.
 //! Unlike `std::collections::HashMap`, `ThinMap` is optimized for small key values.
 //! It's generally 2-5x faster (see the benchmarks).
-//! 
+//!
 //! It uses less memory because it doesn't store the hash value
 //! (64bit x load factor per entry) for every entry
 //! in the map. It's also faster for several reasons:
@@ -22,22 +22,22 @@
 //! - Unlike `std::collections::HashMap`, inserts and removes do not cause element movement.
 //!
 
-use crate::thin_sentinel::*;
-use crate::thin_hasher::*;
-use crate::util::*;
-
 use std::{
     alloc::{self, Layout},
-    mem, ptr, marker,
+    marker, mem, ptr,
 };
+use std::cmp;
+use std::fmt::{self, Debug};
 use std::hash::BuildHasher;
 use std::hash::Hash;
 use std::hash::Hasher;
-use std::fmt::{self, Debug};
-use std::cmp;
-use std::ops::Index;
 use std::iter::FromIterator;
 use std::iter::FusedIterator;
+use std::ops::Index;
+
+use crate::thin_hasher::*;
+use crate::thin_sentinel::*;
+use crate::util::*;
 
 /// A fast, low memory replacement for HashMap.
 ///
@@ -281,7 +281,7 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V>
 #[derive(Clone)]
 pub struct Keys<'a, K: 'a, V: 'a>
 {
-    inner: Iter<'a, K, V>
+    inner: Iter<'a, K, V>,
 }
 
 impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V>
@@ -303,8 +303,7 @@ impl<'a, K, V> Iterator for Keys<'a, K, V>
 
     fn next(&mut self) -> Option<&'a K> {
         let o: Option<(&K, &V)> = self.inner.next();
-        if o.is_some() {
-            let x: (&K, &V) = o.unwrap();
+        if let Some(x) = o {
             return Some(x.0);
         }
         None
@@ -319,7 +318,7 @@ impl<'a, K, V> Iterator for Keys<'a, K, V>
 #[derive(Clone)]
 pub struct Values<'a, K: 'a, V: 'a>
 {
-    inner: Iter<'a, K, V>
+    inner: Iter<'a, K, V>,
 }
 
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V>
@@ -341,8 +340,7 @@ impl<'a, K, V> Iterator for Values<'a, K, V>
 
     fn next(&mut self) -> Option<&'a V> {
         let o: Option<(&K, &V)> = self.inner.next();
-        if o.is_some() {
-            let x: (&K, &V) = o.unwrap();
+        if let Some(x) = o {
             return Some(x.1);
         }
         None
@@ -356,7 +354,7 @@ impl<'a, K, V> Iterator for Values<'a, K, V>
 #[doc(hidden)]
 pub struct ValuesMut<'a, K: 'a, V: 'a>
 {
-    inner: IterMut<'a, K, V>
+    inner: IterMut<'a, K, V>,
 }
 
 impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V>
@@ -378,8 +376,7 @@ impl<'a, K, V> Iterator for ValuesMut<'a, K, V>
 
     fn next(&mut self) -> Option<&'a mut V> {
         let o: Option<(&K, &mut V)> = self.inner.next();
-        if o.is_some() {
-            let x: (&K, &mut V) = o.unwrap();
+        if let Some(x) = o {
             return Some(x.1);
         }
         None
@@ -513,15 +510,15 @@ impl<K: ThinSentinel + Eq + Hash, V> ThinMap<K, V, OneFieldHasherBuilder> {
 
 #[derive(PartialEq)]
 enum BucketState {
-    FULL,
-    EMPTY,
-    REMOVED,
+    Full,
+    Empty,
+    Removed,
 }
 
 impl BucketState {
     #[inline(always)]
     pub fn is_full(&self) -> bool {
-        *self == BucketState::FULL
+        *self == BucketState::Full
     }
 }
 
@@ -663,7 +660,7 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                     occupied: &mut self.occupied,
                     sentinels: &mut self.sentinels,
                     occupied_sentinels: &mut self.occupied_sentinels,
-                    key: key,
+                    key,
                 });
             }
             if K::thin_sentinel_one() == key {
@@ -681,7 +678,7 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                     occupied: &mut self.occupied,
                     sentinels: &mut self.sentinels,
                     occupied_sentinels: &mut self.occupied_sentinels,
-                    key: key,
+                    key,
                 });
             }
         }
@@ -700,7 +697,7 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 occupied: &mut self.occupied,
                 sentinels: &mut self.sentinels,
                 occupied_sentinels: &mut self.occupied_sentinels,
-                key: key,
+                key,
             });
         }
     }
@@ -1025,21 +1022,21 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 ptr::write(entry, (key, value));
             }
         }
-        if BucketState::REMOVED == state {
+        if BucketState::Removed == state {
             self.sentinels -= 1;
         }
         self.occupied += 1;
         if self.occupied + self.sentinels > self.max_occupied() {
             self.rehash();
         }
-        return None;
+        None
     }
 
     fn rehash(&mut self) {
         let max = self.max_occupied();
         let mut new_size = cmp::max(max, ceil_pow2(((self.occupied + 1) << 1) as u64) as usize);
         if self.sentinels > 0 && (max >> 1) + (max >> 2) < self.occupied {
-            new_size = new_size << 1;
+            new_size <<= 1;
         }
         self.rehash_for_size(new_size);
     }
@@ -1123,10 +1120,10 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         unsafe {
             let mut ptr: *mut (K, V) = self.table.offset(index);
             if K::thin_sentinel_zero() == (*ptr).0 {
-                return (ptr, BucketState::EMPTY);
+                return (ptr, BucketState::Empty);
             }
             if (*ptr).0 == *key {
-                return (ptr, BucketState::FULL);
+                return (ptr, BucketState::Full);
             }
 
             let mut removed_ptr: *mut (K, V) = if K::thin_sentinel_one() == (*ptr).0 { ptr } else { ptr::null_mut() };
@@ -1136,13 +1133,13 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
             ptr = ptr.add(1);
             while (ptr as usize) < end_ptr {
                 if (*ptr).0 == *key {
-                    return (ptr, BucketState::FULL);
+                    return (ptr, BucketState::Full);
                 }
                 if K::thin_sentinel_zero() == (*ptr).0 {
-                    if removed_ptr.is_null() {
-                        return (ptr, BucketState::EMPTY);
+                    return if removed_ptr.is_null() {
+                        (ptr, BucketState::Empty)
                     } else {
-                        return (removed_ptr, BucketState::REMOVED);
+                        (removed_ptr, BucketState::Removed)
                     }
                 }
                 if K::thin_sentinel_one() == (*ptr).0 && removed_ptr.is_null() {
@@ -1164,13 +1161,13 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
             if table_end < end_ptr { end_ptr = table_end; }
             while (ptr as usize) < end_ptr {
                 if (*ptr).0 == *key {
-                    return (ptr, BucketState::FULL);
+                    return (ptr, BucketState::Full);
                 }
                 if K::thin_sentinel_zero() == (*ptr).0 {
-                    if removed_ptr.is_null() {
-                        return (ptr, BucketState::EMPTY);
+                    return if removed_ptr.is_null() {
+                        (ptr, BucketState::Empty)
                     } else {
-                        return (removed_ptr, BucketState::REMOVED);
+                        (removed_ptr, BucketState::Removed)
                     }
                 }
                 if K::thin_sentinel_one() == (*ptr).0 && removed_ptr.is_null() {
@@ -1192,13 +1189,13 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 next_index = self.mask((next_index as u64).wrapping_add(spread_two)) as isize;
                 let ptr: *mut (K, V) = self.table.offset(next_index);
                 if (*ptr).0 == *key {
-                    return (ptr, BucketState::FULL);
+                    return (ptr, BucketState::Full);
                 }
                 if K::thin_sentinel_zero() == (*ptr).0 {
-                    if removed_ptr.is_null() {
-                        return (ptr, BucketState::EMPTY);
+                    return if removed_ptr.is_null() {
+                        (ptr, BucketState::Empty)
                     } else {
-                        return (removed_ptr, BucketState::REMOVED);
+                        (removed_ptr, BucketState::Removed)
                     }
                 }
                 if K::thin_sentinel_one() == (*ptr).0 && removed_ptr.is_null() {
@@ -1382,7 +1379,7 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
             }
         }
         let (_entry, state) = self.probe(key);
-        return state.is_full();
+        state.is_full()
     }
 
     fn remove_sentinel(&mut self, offset: isize, full_key: K, empty_key: K) -> Option<V> {
@@ -1513,20 +1510,16 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         unsafe {
             if self.occupied_sentinels > 0 {
                 let mut ptr: *mut (K, V) = self.table.offset(-2);
-                if (*ptr).0 == K::thin_sentinel_zero() {
-                    if !retain_fn(&(*ptr).0, &mut (*ptr).1) {
-                        ptr::drop_in_place(ptr);
-                        overwrite_k(ptr, K::thin_sentinel_one());
-                        self.occupied_sentinels -= 1;
-                    }
+                if (*ptr).0 == K::thin_sentinel_zero() && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
+                    ptr::drop_in_place(ptr);
+                    overwrite_k(ptr, K::thin_sentinel_one());
+                    self.occupied_sentinels -= 1;
                 }
                 ptr = ptr.add(1);
-                if (*ptr).0 == K::thin_sentinel_one() {
-                    if !retain_fn(&(*ptr).0, &mut (*ptr).1) {
-                        ptr::drop_in_place(ptr);
-                        overwrite_k(ptr, K::thin_sentinel_zero());
-                        self.occupied_sentinels -= 1;
-                    }
+                if (*ptr).0 == K::thin_sentinel_one() && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
+                    ptr::drop_in_place(ptr);
+                    overwrite_k(ptr, K::thin_sentinel_zero());
+                    self.occupied_sentinels -= 1;
                 }
             }
             if self.occupied > 0 {
@@ -1724,12 +1717,12 @@ impl<'a, K, V> OccupiedEntry<'a, K, V>
     pub fn remove_entry(self) -> (K, V) {
         let sen;
         let rem;
-        if K::thin_sentinel_one() == (*self.ptr).0 {
+        if K::thin_sentinel_one() == self.ptr.0 {
             rem = K::thin_sentinel_zero();
             sen = true;
         } else {
             rem = K::thin_sentinel_one();
-            sen = K::thin_sentinel_zero() == (*self.ptr).0;
+            sen = K::thin_sentinel_zero() == self.ptr.0;
         }
         unsafe {
             let r = ptr::read(self.ptr);
@@ -1745,7 +1738,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V>
     }
 
     pub fn get(&self) -> &V {
-        &(*self.ptr).1
+        &self.ptr.1
     }
 
     pub fn insert(&mut self, mut value: V) -> V {
@@ -1760,15 +1753,15 @@ impl<'a, K, V> OccupiedEntry<'a, K, V>
     }
 
     pub fn into_mut(self) -> &'a mut V {
-        &mut (*self.ptr).1
+        &mut self.ptr.1
     }
 
     pub fn get_mut(&mut self) -> &mut V {
-        &mut (*self.ptr).1
+        &mut self.ptr.1
     }
 
     pub fn key(&self) -> &K {
-        &(*self.ptr).0
+        &self.ptr.0
     }
 }
 
@@ -1779,7 +1772,7 @@ impl<'a, K, V> VacantEntry<'a, K, V>
         if self.is_sentry() {
             *self.occupied_sentinels += 1;
         } else {
-            if (*self.ptr).0 == K::thin_sentinel_one() {
+            if self.ptr.0 == K::thin_sentinel_one() {
                 *self.sentinels -= 1;
             }
             *self.occupied += 1;
@@ -1787,7 +1780,7 @@ impl<'a, K, V> VacantEntry<'a, K, V>
         unsafe {
             ptr::write(self.ptr, (self.key, value));
         }
-        &mut (*self.ptr).1
+        &mut self.ptr.1
     }
 
     #[inline]
@@ -2131,12 +2124,14 @@ impl<K, V, S> Default for ThinMap<K, V, S>
 mod test_map {
     extern crate rand;
 
-    use super::ThinMap;
-    use super::ThinSentinel;
-    use super::OneFieldHasherBuilder;
-    use super::Entry::{Occupied, Vacant};
     use std::cell::RefCell;
+
     use crate::thin_map::test_map::rand::prelude::*;
+
+    use super::Entry::{Occupied, Vacant};
+    use super::OneFieldHasherBuilder;
+    use super::ThinMap;
+    
 
     #[test]
     fn test_zero_capacities() {
@@ -2219,7 +2214,7 @@ mod test_map {
                 slot.borrow_mut()[k] += 1;
             });
 
-            Droppable { k: k }
+            Droppable { k }
         }
     }
 
@@ -2463,7 +2458,7 @@ mod test_map {
         let mut m = ThinMap::new();
         assert!(m.insert(1, 2).is_none());
         assert_eq!(*m.get(&1).unwrap(), 2);
-        assert!(!m.insert(1, 3).is_none());
+        assert!(m.insert(1, 3).is_some());
         assert_eq!(*m.get(&1).unwrap(), 3);
     }
 
@@ -2564,7 +2559,7 @@ mod test_map {
         let vec = vec![(1, 1), (2, 2), (3, 3)];
         let mut map: ThinMap<_, _> = vec.into_iter().collect();
         for value in map.values_mut() {
-            *value = (*value) * 2
+            *value *= 2
         }
         let values: Vec<_> = map.values().cloned().collect();
         assert_eq!(values.len(), 3);
@@ -2595,7 +2590,7 @@ mod test_map {
         m2.insert(1, 2);
         m2.insert(2, 3);
 
-        assert!(m1 != m2);
+        assert_ne!(m1, m2);
 
         m2.insert(3, 4);
 
@@ -2810,7 +2805,7 @@ mod test_map {
         map.insert(2, 1);
         map.insert(3, 4);
 
-        map[&4];
+        let _ = map[&4];
     }
 
     #[test]
@@ -2881,12 +2876,12 @@ mod test_map {
 
         // Populate the map with some items.
         for _ in 0..50 {
-            let x = rng.gen_range(-10, 10);
+            let x = rng.gen_range(-10..10);
             m.insert(x, ());
         }
 
         for i in 0..1000 {
-            let x = rng.gen_range(-10, 10);
+            let x = rng.gen_range(-10..10);
             match m.entry(x) {
                 Vacant(_) => {}
                 Occupied(e) => {
@@ -2946,11 +2941,11 @@ mod test_map {
         let key = 17;
         let value = 222;
         assert!(a.is_empty());
-        a.insert(key.clone(), value.clone());
+        a.insert(key, value);
         assert_eq!(a.len(), 1);
         assert_eq!(a[&key], value);
 
-        match a.entry(key.clone()) {
+        match a.entry(key) {
             Vacant(_) => panic!(),
             Occupied(e) => assert_eq!(key, *e.key()),
         }
@@ -2965,11 +2960,11 @@ mod test_map {
         let value = 222;
 
         assert!(a.is_empty());
-        match a.entry(key.clone()) {
+        match a.entry(key) {
             Occupied(_) => panic!(),
             Vacant(e) => {
                 assert_eq!(key, *e.key());
-                e.insert(value.clone());
+                e.insert(value);
             }
         }
         assert_eq!(a.len(), 1);

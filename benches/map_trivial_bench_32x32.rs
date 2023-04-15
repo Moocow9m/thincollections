@@ -15,13 +15,13 @@ extern crate thincollections;
 
 use std::collections::HashMap;
 
-use criterion::{BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main, PlottingBackend};
+use criterion::{BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main};
 use criterion::measurement::WallTime;
 use rand::*;
 use rand::prelude::SliceRandom;
 use rand_xoshiro::Xoshiro512StarStar;
 
-use thincollections::thin_hasher::TrivialOneFieldHasher;
+
 use thincollections::thin_hasher::TrivialOneFieldHasherBuilder;
 use thincollections::thin_map::ThinMap;
 
@@ -182,7 +182,7 @@ fn create_std(size: u32, shift: u32) -> HashMap<i32, u32, TrivialOneFieldHasherB
     hash_map
 }
 
-fn get_seq_thin_var(map: &ThinMap<i32, u32, TrivialOneFieldHasherBuilder>, size: u32, shift: u32) {
+fn get_seq_thin_var(map: &ThinMap<i32, u32, TrivialOneFieldHasherBuilder>, size: u32, _shift: u32) {
     let mut c = 1;
     let mut x = 0;
     let y = size as i32;
@@ -192,7 +192,7 @@ fn get_seq_thin_var(map: &ThinMap<i32, u32, TrivialOneFieldHasherBuilder>, size:
     }
 }
 
-fn get_seq_std_var(map: &HashMap<i32, u32, TrivialOneFieldHasherBuilder>, size: u32, shift: u32) {
+fn get_seq_std_var(map: &HashMap<i32, u32, TrivialOneFieldHasherBuilder>, size: u32, _shift: u32) {
     let mut c = 1;
     let mut x = 0;
     let y = size as i32;

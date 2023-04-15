@@ -8,30 +8,30 @@
 //
 
 //! Implementations of `Hasher` that work well with `ThinMap`/`ThinSet`
-use crate::util::*;
-
-use std::sync::atomic::*;
-use std::hash::Hasher;
 use std::hash::BuildHasher;
+use std::hash::Hasher;
+use std::sync::atomic::*;
+
+use crate::util::*;
 
 static SEED: AtomicUsize = AtomicUsize::new(0xcafebabe_usize);
 
 fn next_seed() -> u64 {
     let x = SEED.load(Ordering::Acquire) as u64;
     let y = spread_three(x);
-    SEED.compare_and_swap(x as usize, y as usize, Ordering::Release); // we don't care if it fails
+    let _ = SEED.compare_exchange_weak(x as usize, y as usize, Ordering::Release, Ordering::Relaxed); // we don't care if it fails
     y
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OneFieldHasherBuilder {
-    seed: u64
+    seed: u64,
 }
 
 /// The default hasher used by `ThinMap`/`ThinSet`. Resilient and fast.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct OneFieldHasher {
-    hash: u64
+    hash: u64,
 }
 
 impl Default for OneFieldHasherBuilder {
@@ -70,8 +70,8 @@ impl Hasher for OneFieldHasher {
 
     fn write(&mut self, bytes: &[u8]) {
         let mut x: u64 = 0;
-        let mut iter = bytes.iter();
-        while let Some(byte) = iter.next() {
+        let iter = bytes.iter();
+        for byte in iter {
             x ^= *byte as u64;
             x <<= 8;
         }
@@ -95,7 +95,7 @@ impl Hasher for OneFieldHasher {
 
     #[inline(always)]
     fn write_u64(&mut self, i: u64) {
-        self.hash ^= i as u64
+        self.hash ^= i
     }
 
     #[inline(always)]
@@ -143,13 +143,13 @@ impl Hasher for OneFieldHasher {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MultiFieldHasherBuilder {
-    seed: u64
+    seed: u64,
 }
 
 /// A hasher that should work a little bit better for multi-field custom keys.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MultiFieldHasher {
-    hash: u64
+    hash: u64,
 }
 
 impl Default for MultiFieldHasherBuilder {
@@ -190,8 +190,8 @@ impl Hasher for MultiFieldHasher {
 
     fn write(&mut self, bytes: &[u8]) {
         let mut x: u64 = 0;
-        let mut iter = bytes.iter();
-        while let Some(byte) = iter.next() {
+        let iter = bytes.iter();
+        for byte in iter {
             x ^= *byte as u64;
             x <<= 8;
         }
@@ -218,7 +218,7 @@ impl Hasher for MultiFieldHasher {
 
     #[inline(always)]
     fn write_u64(&mut self, i: u64) {
-        self.hash ^= i as u64
+        self.hash ^= i
     }
 
     #[inline(always)]
@@ -265,14 +265,14 @@ impl Hasher for MultiFieldHasher {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TrivialOneFieldHasherBuilder {
-    seed: u64
+    seed: u64,
 }
 
 /// A very fast hasher that has low resilience. Still appropriate for `ThinMap`/`ThinSet`
 /// because of the non-linear, adaptive collision resolution.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TrivialOneFieldHasher {
-    hash: u64
+    hash: u64,
 }
 
 impl Default for TrivialOneFieldHasherBuilder {
@@ -311,8 +311,8 @@ impl Hasher for TrivialOneFieldHasher {
 
     fn write(&mut self, bytes: &[u8]) {
         let mut x: u64 = 0;
-        let mut iter = bytes.iter();
-        while let Some(byte) = iter.next() {
+        let iter = bytes.iter();
+        for byte in iter {
             x ^= *byte as u64;
             x <<= 8;
         }
@@ -336,7 +336,7 @@ impl Hasher for TrivialOneFieldHasher {
 
     #[inline(always)]
     fn write_u64(&mut self, i: u64) {
-        self.hash ^= i as u64
+        self.hash ^= i
     }
 
     #[inline(always)]

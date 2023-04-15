@@ -26,10 +26,17 @@ autobenches = false
 
 [dev-dependencies]
 criterion = { version = "0.4.0", features = ["real_blackbox", "html_reports"] }
-num = "0.2.0"
-rand = "0.5.5"
-xoshiro = "0.0.4"
-ordered-float = "1.0"
+num = "0.4.0"
+rand = { version = "0.8.5", features = ["simd_support"] }
+ordered-float = "3.6.0"
+rand_xoshiro = "0.6.0"
+
+[profile.release]
+overflow-checks = false
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
 
 [[bench]]
 name = "map_default_bench_32x32"

@@ -8,24 +8,25 @@
 //
 #![feature(test)]
 
+extern crate rand;
+extern crate rand_xoshiro;
 extern crate test;
 extern crate thincollections;
-extern crate rand;
-extern crate xoshiro;
-
-use thincollections::thin_map::ThinMap;
 
 use std::collections::HashMap;
 
 use criterion::{Bencher, BenchmarkGroup, BenchmarkId, black_box, Criterion, criterion_group, criterion_main, PlottingBackend};
 use criterion::measurement::WallTime;
 use rand::*;
-use xoshiro::Xoshiro512StarStar;
+use rand::prelude::SliceRandom;
+use rand_xoshiro::Xoshiro512StarStar;
+
+use thincollections::thin_map::ThinMap;
 
 fn run_inserts_rnd_thin_var(b: &mut Bencher, size: i32) {
     let mut vec = create_rand_vec(size);
-//    let mut rng1 = Xoshiro512StarStar::from_seed_u64(0x1234_5678_9ABC_DEF1);
-//    rng1.shuffle(&mut vec);
+//    let mut rng1 = Xoshiro512StarStar::seed_from_u64(0x1234_5678_9ABC_DEF1);
+//    vec.shuffle(&mut rng1);
     b.iter(|| inserts_vec_thin(&vec));
 }
 
@@ -35,7 +36,7 @@ fn run_inserts_rnd_std_var(b: &mut Bencher, size: i32) {
 }
 
 fn create_rand_vec(size: i32) -> Vec<i32> {
-    let mut rng1 = Xoshiro512StarStar::from_seed_u64(0x1234_5678_9ABC_DEF1);
+    let mut rng1 = Xoshiro512StarStar::seed_from_u64(0x1234_5678_9ABC_DEF1);
     let mut vec = Vec::with_capacity(size as usize);
     for _i in 0..size {
         vec.push(rng1.next_u32() as i32);
@@ -46,12 +47,12 @@ fn create_rand_vec(size: i32) -> Vec<i32> {
 fn benchmdr_thin_get(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
     let src = create_rand_vec(*points.last().unwrap() as i32);
-    let mut rng1 = Xoshiro512StarStar::from_seed_u64(0x1234_5678_9ABC_DEF1);
+    let mut rng1 = Xoshiro512StarStar::seed_from_u64(0x1234_5678_9ABC_DEF1);
     for p in points.iter() {
         let map = create_thin_from_vec(*p, &src);
         let mut get_src = src.clone();
         get_src.truncate(*p as usize);
-        rng1.shuffle(&mut get_src);
+        get_src.shuffle(&mut rng1);
         group.throughput(criterion::Throughput::Elements(*p as u64));
         group.bench_function(BenchmarkId::new("Thin", *p), |b| b.iter(|| get_thin_from_vec(&map, &get_src)));
     }
@@ -60,12 +61,12 @@ fn benchmdr_thin_get(group: &mut BenchmarkGroup<WallTime>) {
 fn benchmdr_std_get(group: &mut BenchmarkGroup<WallTime>) {
     let points = determine_points(4_000_000);
     let src = create_rand_vec(*points.last().unwrap() as i32);
-    let mut rng1 = Xoshiro512StarStar::from_seed_u64(0x1234_5678_9ABC_DEF1);
+    let mut rng1 = Xoshiro512StarStar::seed_from_u64(0x1234_5678_9ABC_DEF1);
     for p in points.iter() {
         let map = create_std_from_vec(*p, &src);
         let mut get_src = src.clone();
         get_src.truncate(*p as usize);
-        rng1.shuffle(&mut get_src);
+        get_src.shuffle(&mut rng1);
         group.throughput(criterion::Throughput::Elements(*p as u64));
         group.bench_function(BenchmarkId::new("Std", *p), |b| b.iter(|| get_std_from_vec(&map, &get_src)));
     }
@@ -94,7 +95,7 @@ fn benchmds_thin_insert(group: &mut BenchmarkGroup<WallTime>) {
     for p in points.iter() {
         group.throughput(criterion::Throughput::Elements(*p as u64));
         group.bench_function(BenchmarkId::new("Thin", *p), |b| b.iter(|| create_thin(*p, 0)));
-     }
+    }
 }
 
 fn benchmds_std_insert(group: &mut BenchmarkGroup<WallTime>) {

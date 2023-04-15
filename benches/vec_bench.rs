@@ -8,17 +8,18 @@
 //
 #![feature(test)]
 
+extern crate rand;
 extern crate test;
 #[macro_use]
 extern crate thincollections;
-extern crate rand;
+
+use std::rc::Rc;
+use test::stats::Summary;
+
+use criterion::{Bencher, black_box, Criterion, criterion_group, criterion_main};
 
 use thincollections::thin_v64::V64;
 use thincollections::thin_vec::ThinVec;
-
-use test::stats::Summary;
-use std::rc::Rc;
-use criterion::{Bencher, black_box, Criterion, criterion_group, criterion_main};
 
 fn benchv_v64_1m_insert(b: &mut Bencher) {
     b.iter(|| {

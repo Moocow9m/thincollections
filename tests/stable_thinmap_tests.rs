@@ -25,13 +25,8 @@ struct Color {
 }
 
 impl ThinSentinel for Color {
-    fn thin_sentinel_zero() -> Self {
-        Color { r: 0, g: 0, b: 0 }
-    }
-
-    fn thin_sentinel_one() -> Self {
-        Color { r: 0, g: 0, b: 1 }
-    }
+    const SENTINEL_ZERO: Self = Color { r: 0, g: 0, b: 0 };
+    const SENTINEL_ONE: Self = Color { r: 0, g: 0, b: 1 };
 }
 
 #[test]

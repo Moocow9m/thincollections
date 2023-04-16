@@ -134,7 +134,7 @@ impl<'a, K: 'a, V: 'a> Iterator for Iter<'a, K, V>
         }
         unsafe {
             while self.cur < self.end {
-                if K::thin_sentinel_zero() != (*self.cur).0 && K::thin_sentinel_one() != (*self.cur).0 {
+                if K::SENTINEL_ZERO != (*self.cur).0 && K::SENTINEL_ONE != (*self.cur).0 {
                     let r = Some((&(*self.cur).0, &(*self.cur).1));
                     self.todo -= 1;
                     self.cur = self.cur.add(1);
@@ -182,23 +182,23 @@ impl<'a, K, V> Iterator for Drain<'a, K, V>
             if !self.sentinel_zero_ptr.is_null() {
                 *self.occupied_sentinels -= 1;
                 let r = Some(ptr::read(self.sentinel_zero_ptr));
-                overwrite_k(self.sentinel_zero_ptr, K::thin_sentinel_one());
+                overwrite_k(self.sentinel_zero_ptr, K::SENTINEL_ONE);
                 self.sentinel_zero_ptr = ptr::null_mut();
                 return r;
             }
             if !self.sentinel_one_ptr.is_null() {
                 *self.occupied_sentinels -= 1;
                 let r = Some(ptr::read(self.sentinel_one_ptr));
-                overwrite_k(self.sentinel_one_ptr, K::thin_sentinel_zero());
+                overwrite_k(self.sentinel_one_ptr, K::SENTINEL_ZERO);
                 self.sentinel_one_ptr = ptr::null_mut();
                 return r;
             }
         }
         unsafe {
             while self.cur < self.end {
-                if K::thin_sentinel_zero() != (*self.cur).0 && K::thin_sentinel_one() != (*self.cur).0 {
+                if K::SENTINEL_ZERO != (*self.cur).0 && K::SENTINEL_ONE != (*self.cur).0 {
                     let r = Some(ptr::read(self.cur));
-                    overwrite_k(self.cur, K::thin_sentinel_one());
+                    overwrite_k(self.cur, K::SENTINEL_ONE);
                     self.cur = self.cur.add(1);
                     *self.occupied -= 1;
                     *self.sentinels += 1;
@@ -260,7 +260,7 @@ impl<'a, K: 'a, V: 'a> Iterator for IterMut<'a, K, V>
         }
         unsafe {
             while self.cur < self.end {
-                if K::thin_sentinel_zero() != (*self.cur).0 && K::thin_sentinel_one() != (*self.cur).0 {
+                if K::SENTINEL_ZERO != (*self.cur).0 && K::SENTINEL_ONE != (*self.cur).0 {
                     let r = Some((&(*self.cur).0, &mut (*self.cur).1));
                     self.todo -= 1;
                     self.cur = self.cur.add(1);
@@ -645,9 +645,9 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
             self.allocate_table();
         }
         unsafe {
-            if K::thin_sentinel_zero() == key {
+            if K::SENTINEL_ZERO == key {
                 let ptr = self.table.offset(-2);
-                if (*ptr).0 == K::thin_sentinel_zero() {
+                if (*ptr).0 == K::SENTINEL_ZERO {
                     return Entry::Occupied(OccupiedEntry {
                         ptr: ptr.as_mut().unwrap(),
                         occupied: &mut self.occupied,
@@ -663,9 +663,9 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                     key,
                 });
             }
-            if K::thin_sentinel_one() == key {
+            if K::SENTINEL_ONE == key {
                 let ptr = self.table.offset(-1);
-                if (*ptr).0 == K::thin_sentinel_one() {
+                if (*ptr).0 == K::SENTINEL_ONE {
                     return Entry::Occupied(OccupiedEntry {
                         ptr: ptr.as_mut().unwrap(),
                         occupied: &mut self.occupied,
@@ -737,11 +737,11 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         }
         unsafe {
             let mut zero_ptr = self.table.offset(-2);
-            if (*zero_ptr).0 != K::thin_sentinel_zero() {
+            if (*zero_ptr).0 != K::SENTINEL_ZERO {
                 zero_ptr = ptr::null_mut();
             }
             let mut one_ptr = self.table.offset(-1);
-            if (*one_ptr).0 != K::thin_sentinel_one() {
+            if (*one_ptr).0 != K::SENTINEL_ONE {
                 one_ptr = ptr::null_mut();
             }
             Drain {
@@ -787,11 +787,11 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         }
         unsafe {
             let mut zero_ptr = self.table.offset(-2);
-            if (*zero_ptr).0 != K::thin_sentinel_zero() {
+            if (*zero_ptr).0 != K::SENTINEL_ZERO {
                 zero_ptr = ptr::null_mut();
             }
             let mut one_ptr = self.table.offset(-1);
-            if (*one_ptr).0 != K::thin_sentinel_one() {
+            if (*one_ptr).0 != K::SENTINEL_ONE {
                 one_ptr = ptr::null_mut();
             }
             Iter {
@@ -913,11 +913,11 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         }
         unsafe {
             let mut zero_ptr = self.table.offset(-2);
-            if (*zero_ptr).0 != K::thin_sentinel_zero() {
+            if (*zero_ptr).0 != K::SENTINEL_ZERO {
                 zero_ptr = ptr::null_mut();
             }
             let mut one_ptr = self.table.offset(-1);
-            if (*one_ptr).0 != K::thin_sentinel_one() {
+            if (*one_ptr).0 != K::SENTINEL_ONE {
                 one_ptr = ptr::null_mut();
             }
             IterMut {
@@ -1006,10 +1006,10 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         if self.table_size == 0 {
             self.allocate_table();
         }
-        if K::thin_sentinel_zero() == key {
-            return self.insert_sentinel(-2, K::thin_sentinel_zero(), value);
-        } else if K::thin_sentinel_one() == key {
-            return self.insert_sentinel(-1, K::thin_sentinel_one(), value);
+        if K::SENTINEL_ZERO == key {
+            return self.insert_sentinel(-2, K::SENTINEL_ZERO, value);
+        } else if K::SENTINEL_ONE == key {
+            return self.insert_sentinel(-1, K::SENTINEL_ONE, value);
         }
         let state;
         {
@@ -1057,7 +1057,7 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
             let table_end = old_table.add(old_size);
             while ptr < table_end {
 //                println!("considering {:?} {:?}", &(*ptr).0, &(*ptr).1);
-                if K::thin_sentinel_zero() != (*ptr).0 && K::thin_sentinel_one() != (*ptr).0 {
+                if K::SENTINEL_ZERO != (*ptr).0 && K::SENTINEL_ONE != (*ptr).0 {
                     let (entry, _bucket_state) = self.probe(&(*ptr).0);
                     ptr::copy_nonoverlapping(ptr, entry, 1);
 //                    println!("copied {:?} {:?} {:?}", &(*ptr).0, &(*ptr).1, &self);
@@ -1085,11 +1085,11 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 let table_end = table.add(size + 2);
                 let mut ptr = table;
                 while ptr < table_end {
-                    ptr::write(ptr as *mut K, K::thin_sentinel_zero());
+                    ptr::write(ptr as *mut K, K::SENTINEL_ZERO);
                     ptr = ptr.add(1);
                 }
             }
-            overwrite_k(table, K::thin_sentinel_one());
+            overwrite_k(table, K::SENTINEL_ONE);
             table.add(2)
         }
     }
@@ -1119,14 +1119,14 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         let (hash, index) = self.hash_and_mask(key);
         unsafe {
             let mut ptr: *mut (K, V) = self.table.offset(index);
-            if K::thin_sentinel_zero() == (*ptr).0 {
+            if K::SENTINEL_ZERO == (*ptr).0 {
                 return (ptr, BucketState::Empty);
             }
             if (*ptr).0 == *key {
                 return (ptr, BucketState::Full);
             }
 
-            let mut removed_ptr: *mut (K, V) = if K::thin_sentinel_one() == (*ptr).0 { ptr } else { ptr::null_mut() };
+            let mut removed_ptr: *mut (K, V) = if K::SENTINEL_ONE == (*ptr).0 { ptr } else { ptr::null_mut() };
             let table_end: usize = self.table.add(self.table_size) as usize;
             let mut end_ptr: usize = ((ptr as usize) & !63) + 64;
             if table_end < end_ptr { end_ptr = table_end; }
@@ -1135,14 +1135,14 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 if (*ptr).0 == *key {
                     return (ptr, BucketState::Full);
                 }
-                if K::thin_sentinel_zero() == (*ptr).0 {
+                if K::SENTINEL_ZERO == (*ptr).0 {
                     return if removed_ptr.is_null() {
                         (ptr, BucketState::Empty)
                     } else {
                         (removed_ptr, BucketState::Removed)
                     }
                 }
-                if K::thin_sentinel_one() == (*ptr).0 && removed_ptr.is_null() {
+                if K::SENTINEL_ONE == (*ptr).0 && removed_ptr.is_null() {
                     removed_ptr = ptr;
                 }
                 ptr = ptr.add(1);
@@ -1163,14 +1163,14 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 if (*ptr).0 == *key {
                     return (ptr, BucketState::Full);
                 }
-                if K::thin_sentinel_zero() == (*ptr).0 {
+                if K::SENTINEL_ZERO == (*ptr).0 {
                     return if removed_ptr.is_null() {
                         (ptr, BucketState::Empty)
                     } else {
                         (removed_ptr, BucketState::Removed)
                     }
                 }
-                if K::thin_sentinel_one() == (*ptr).0 && removed_ptr.is_null() {
+                if K::SENTINEL_ONE == (*ptr).0 && removed_ptr.is_null() {
                     removed_ptr = ptr;
                 }
                 ptr = ptr.add(1);
@@ -1191,14 +1191,14 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 if (*ptr).0 == *key {
                     return (ptr, BucketState::Full);
                 }
-                if K::thin_sentinel_zero() == (*ptr).0 {
+                if K::SENTINEL_ZERO == (*ptr).0 {
                     return if removed_ptr.is_null() {
                         (ptr, BucketState::Empty)
                     } else {
                         (removed_ptr, BucketState::Removed)
                     }
                 }
-                if K::thin_sentinel_one() == (*ptr).0 && removed_ptr.is_null() {
+                if K::SENTINEL_ONE == (*ptr).0 && removed_ptr.is_null() {
                     removed_ptr = ptr;
                 }
             }
@@ -1224,18 +1224,18 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         if self.is_empty() {
             return None;
         }
-        if K::thin_sentinel_zero() == *key {
+        if K::SENTINEL_ZERO == *key {
             unsafe {
                 let ptr = self.table.offset(-2);
-                if (*ptr).0 == K::thin_sentinel_zero() {
+                if (*ptr).0 == K::SENTINEL_ZERO {
                     return Some((&(*ptr).0, &(*ptr).1));
                 }
                 return None;
             }
-        } else if K::thin_sentinel_one() == *key {
+        } else if K::SENTINEL_ONE == *key {
             unsafe {
                 let ptr = self.table.offset(-1);
-                if (*ptr).0 == K::thin_sentinel_one() {
+                if (*ptr).0 == K::SENTINEL_ONE {
                     return Some((&(*ptr).0, &(*ptr).1));
                 }
                 return None;
@@ -1278,15 +1278,15 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         }
         let got_it: bool;
         let ptr: *mut (K, V);
-        if K::thin_sentinel_zero() == *key {
+        if K::SENTINEL_ZERO == *key {
             unsafe {
                 ptr = self.table.offset(-2);
-                got_it = (*ptr).0 == K::thin_sentinel_zero();
+                got_it = (*ptr).0 == K::SENTINEL_ZERO;
             }
-        } else if K::thin_sentinel_one() == *key {
+        } else if K::SENTINEL_ONE == *key {
             unsafe {
                 ptr = self.table.offset(-1);
-                got_it = (*ptr).0 == K::thin_sentinel_one();
+                got_it = (*ptr).0 == K::SENTINEL_ONE;
             }
         } else {
             let (entry, state) = self.probe(key);
@@ -1322,18 +1322,18 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         if self.is_empty() {
             return None;
         }
-        if K::thin_sentinel_zero() == *key {
+        if K::SENTINEL_ZERO == *key {
             unsafe {
                 let ptr = self.table.offset(-2);
-                if (*ptr).0 == K::thin_sentinel_zero() {
+                if (*ptr).0 == K::SENTINEL_ZERO {
                     return Some(&mut (*ptr).1);
                 }
                 return None;
             }
-        } else if K::thin_sentinel_one() == *key {
+        } else if K::SENTINEL_ONE == *key {
             unsafe {
                 let ptr = self.table.offset(-1);
-                if (*ptr).0 == K::thin_sentinel_one() {
+                if (*ptr).0 == K::SENTINEL_ONE {
                     return Some(&mut (*ptr).1);
                 }
                 return None;
@@ -1367,15 +1367,15 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         if self.is_empty() {
             return false;
         }
-        if K::thin_sentinel_zero() == *key {
+        if K::SENTINEL_ZERO == *key {
             unsafe {
                 let ptr = self.table.offset(-2);
-                return (*ptr).0 == K::thin_sentinel_zero();
+                return (*ptr).0 == K::SENTINEL_ZERO;
             }
-        } else if K::thin_sentinel_one() == *key {
+        } else if K::SENTINEL_ONE == *key {
             unsafe {
                 let ptr = self.table.offset(-1);
-                return (*ptr).0 == K::thin_sentinel_one();
+                return (*ptr).0 == K::SENTINEL_ONE;
             }
         }
         let (_entry, state) = self.probe(key);
@@ -1413,17 +1413,17 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         if self.is_empty() {
             return None;
         }
-        if K::thin_sentinel_zero() == *key {
-            return self.remove_sentinel(-2, K::thin_sentinel_zero(), K::thin_sentinel_one());
-        } else if K::thin_sentinel_one() == *key {
-            return self.remove_sentinel(-1, K::thin_sentinel_one(), K::thin_sentinel_zero());
+        if K::SENTINEL_ZERO == *key {
+            return self.remove_sentinel(-2, K::SENTINEL_ZERO, K::SENTINEL_ONE);
+        } else if K::SENTINEL_ONE == *key {
+            return self.remove_sentinel(-1, K::SENTINEL_ONE, K::SENTINEL_ZERO);
         }
         let mut r: Option<V> = None;
         {
             let (entry, state) = self.probe(key);
             if state.is_full() {
                 unsafe {
-                    overwrite_k(entry, K::thin_sentinel_one());
+                    overwrite_k(entry, K::SENTINEL_ONE);
                     r = Some(ptr::read(&(*entry).1 as *const V));
                 }
             }
@@ -1466,10 +1466,10 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         if self.is_empty() {
             return None;
         }
-        if K::thin_sentinel_zero() == *key {
-            return self.remove_sentinel_entry(-2, K::thin_sentinel_zero(), K::thin_sentinel_one());
-        } else if K::thin_sentinel_one() == *key {
-            return self.remove_sentinel_entry(-1, K::thin_sentinel_one(), K::thin_sentinel_zero());
+        if K::SENTINEL_ZERO == *key {
+            return self.remove_sentinel_entry(-2, K::SENTINEL_ZERO, K::SENTINEL_ONE);
+        } else if K::SENTINEL_ONE == *key {
+            return self.remove_sentinel_entry(-1, K::SENTINEL_ONE, K::SENTINEL_ZERO);
         }
         let mut r: Option<(K, V)> = None;
         {
@@ -1477,7 +1477,7 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
             if state.is_full() {
                 unsafe {
                     r = Some(ptr::read(entry));
-                    overwrite_k(entry, K::thin_sentinel_one());
+                    overwrite_k(entry, K::SENTINEL_ONE);
                 }
             }
         }
@@ -1510,15 +1510,15 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
         unsafe {
             if self.occupied_sentinels > 0 {
                 let mut ptr: *mut (K, V) = self.table.offset(-2);
-                if (*ptr).0 == K::thin_sentinel_zero() && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
+                if (*ptr).0 == K::SENTINEL_ZERO && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
                     ptr::drop_in_place(ptr);
-                    overwrite_k(ptr, K::thin_sentinel_one());
+                    overwrite_k(ptr, K::SENTINEL_ONE);
                     self.occupied_sentinels -= 1;
                 }
                 ptr = ptr.add(1);
-                if (*ptr).0 == K::thin_sentinel_one() && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
+                if (*ptr).0 == K::SENTINEL_ONE && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
                     ptr::drop_in_place(ptr);
-                    overwrite_k(ptr, K::thin_sentinel_zero());
+                    overwrite_k(ptr, K::SENTINEL_ZERO);
                     self.occupied_sentinels -= 1;
                 }
             }
@@ -1526,9 +1526,9 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
                 let mut ptr: *mut (K, V) = self.table;
                 let table_end = self.table.add(self.table_size);
                 while ptr < table_end {
-                    if K::thin_sentinel_zero() != (*ptr).0 && K::thin_sentinel_one() != (*ptr).0 && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
+                    if K::SENTINEL_ZERO != (*ptr).0 && K::SENTINEL_ONE != (*ptr).0 && !retain_fn(&(*ptr).0, &mut (*ptr).1) {
                         ptr::drop_in_place(ptr);
-                        overwrite_k(ptr, K::thin_sentinel_one());
+                        overwrite_k(ptr, K::SENTINEL_ONE);
                         self.occupied -= 1;
                         self.sentinels += 1;
                     }
@@ -1556,25 +1556,25 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> ThinMap<K, V, H> {
             unsafe {
                 if self.occupied_sentinels > 0 {
                     let mut ptr: *mut (K, V) = self.table.offset(-2);
-                    if (*ptr).0 == K::thin_sentinel_zero() {
+                    if (*ptr).0 == K::SENTINEL_ZERO {
                         ptr::drop_in_place(ptr);
-                        overwrite_k(ptr, K::thin_sentinel_one());
+                        overwrite_k(ptr, K::SENTINEL_ONE);
                     }
                     ptr = ptr.add(1);
-                    if (*ptr).0 == K::thin_sentinel_one() {
+                    if (*ptr).0 == K::SENTINEL_ONE {
                         ptr::drop_in_place(ptr);
-                        overwrite_k(ptr, K::thin_sentinel_zero());
+                        overwrite_k(ptr, K::SENTINEL_ZERO);
                     }
                 }
                 if self.occupied > 0 {
                     let mut ptr: *mut (K, V) = self.table;
                     let table_end = self.table.add(self.table_size);
                     while ptr < table_end {
-                        if K::thin_sentinel_zero() != (*ptr).0 {
-                            if K::thin_sentinel_one() != (*ptr).0 {
+                        if K::SENTINEL_ZERO != (*ptr).0 {
+                            if K::SENTINEL_ONE != (*ptr).0 {
                                 ptr::drop_in_place(ptr);
                             }
-                            overwrite_k(ptr, K::thin_sentinel_zero());
+                            overwrite_k(ptr, K::SENTINEL_ZERO);
                         }
                         ptr = ptr.add(1);
                     }
@@ -1603,11 +1603,11 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> Drop for ThinMap<K, V, H> {
                 if mem::needs_drop::<(K, V)>() {
                     if self.occupied_sentinels > 0 {
                         let mut ptr: *mut (K, V) = self.table.offset(-2);
-                        if (*ptr).0 == K::thin_sentinel_zero() {
+                        if (*ptr).0 == K::SENTINEL_ZERO {
                             ptr::drop_in_place(ptr);
                         }
                         ptr = ptr.add(1);
-                        if (*ptr).0 == K::thin_sentinel_one() {
+                        if (*ptr).0 == K::SENTINEL_ONE {
                             ptr::drop_in_place(ptr);
                         }
                     }
@@ -1615,7 +1615,7 @@ impl<K: ThinSentinel + Eq + Hash, V, H: BuildHasher> Drop for ThinMap<K, V, H> {
                         let mut ptr: *mut (K, V) = self.table;
                         let table_end = self.table.add(self.table_size);
                         while ptr < table_end {
-                            if K::thin_sentinel_zero() != (*ptr).0 && K::thin_sentinel_one() != (*ptr).0 {
+                            if K::SENTINEL_ZERO != (*ptr).0 && K::SENTINEL_ONE != (*ptr).0 {
                                 ptr::drop_in_place(ptr);
                             }
                             ptr = ptr.add(1);
@@ -1656,11 +1656,11 @@ impl<K, V, S> Debug for ThinMap<K, V, S>
         if self.table_size > 0 {
             unsafe {
                 let mut ptr: *mut (K, V) = self.table.offset(-2);
-                if (*ptr).0 == K::thin_sentinel_zero() {
+                if (*ptr).0 == K::SENTINEL_ZERO {
                     debug_map.entry(&(*ptr).0, &(*ptr).1);
                 }
                 ptr = ptr.add(1);
-                if (*ptr).0 == K::thin_sentinel_one() {
+                if (*ptr).0 == K::SENTINEL_ONE {
                     debug_map.entry(&(*ptr).0, &(*ptr).1);
                 }
             }
@@ -1668,7 +1668,7 @@ impl<K, V, S> Debug for ThinMap<K, V, S>
                 let mut ptr: *mut (K, V) = self.table;
                 let table_end = self.table.add(self.table_size);
                 while ptr < table_end {
-                    if K::thin_sentinel_zero() != (*ptr).0 && K::thin_sentinel_one() != (*ptr).0 {
+                    if K::SENTINEL_ZERO != (*ptr).0 && K::SENTINEL_ONE != (*ptr).0 {
                         debug_map.entry(&(*ptr).0, &(*ptr).1);
                     }
                     ptr = ptr.add(1);
@@ -1690,11 +1690,11 @@ impl<K, V, S> ThinMap<K, V, S>
         println!("occupied {}, sentinels {}, occupied_sentinels {}", self.occupied, self.sentinels, self.occupied_sentinels);
         unsafe {
             let mut ptr: *mut (K, V) = self.table.offset(-2);
-            if (*ptr).0 == K::thin_sentinel_zero() {
+            if (*ptr).0 == K::SENTINEL_ZERO {
                 println!("[{:?},{:?}]", &(*ptr).0, &(*ptr).1);
             }
             ptr = ptr.add(1);
-            if (*ptr).0 == K::thin_sentinel_one() {
+            if (*ptr).0 == K::SENTINEL_ONE {
                 println!("[{:?},{:?}]", &(*ptr).0, &(*ptr).1);
             }
         }
@@ -1702,7 +1702,7 @@ impl<K, V, S> ThinMap<K, V, S>
             let mut ptr: *mut (K, V) = self.table;
             let table_end = self.table.add(self.table_size);
             while ptr < table_end {
-                if K::thin_sentinel_zero() != (*ptr).0 && K::thin_sentinel_one() != (*ptr).0 {
+                if K::SENTINEL_ZERO != (*ptr).0 && K::SENTINEL_ONE != (*ptr).0 {
                     println!("[{:?},{:?}]", &(*ptr).0, &(*ptr).1);
                 }
                 ptr = ptr.add(1);
@@ -1717,12 +1717,12 @@ impl<'a, K, V> OccupiedEntry<'a, K, V>
     pub fn remove_entry(self) -> (K, V) {
         let sen;
         let rem;
-        if K::thin_sentinel_one() == self.ptr.0 {
-            rem = K::thin_sentinel_zero();
+        if K::SENTINEL_ONE == self.ptr.0 {
+            rem = K::SENTINEL_ZERO;
             sen = true;
         } else {
-            rem = K::thin_sentinel_one();
-            sen = K::thin_sentinel_zero() == self.ptr.0;
+            rem = K::SENTINEL_ONE;
+            sen = K::SENTINEL_ZERO == self.ptr.0;
         }
         unsafe {
             let r = ptr::read(self.ptr);
@@ -1772,7 +1772,7 @@ impl<'a, K, V> VacantEntry<'a, K, V>
         if self.is_sentry() {
             *self.occupied_sentinels += 1;
         } else {
-            if self.ptr.0 == K::thin_sentinel_one() {
+            if self.ptr.0 == K::SENTINEL_ONE {
                 *self.sentinels -= 1;
             }
             *self.occupied += 1;
@@ -1785,7 +1785,7 @@ impl<'a, K, V> VacantEntry<'a, K, V>
 
     #[inline]
     fn is_sentry(&self) -> bool {
-        self.key == K::thin_sentinel_one() || self.key == K::thin_sentinel_zero()
+        self.key == K::SENTINEL_ONE || self.key == K::SENTINEL_ZERO
     }
 
     pub fn key(&self) -> &K {
@@ -1917,11 +1917,11 @@ impl<K, V, S> IntoIterator for ThinMap<K, V, S>
         }
         unsafe {
             let mut zero_ptr = self.table.offset(-2);
-            if (*zero_ptr).0 != K::thin_sentinel_zero() {
+            if (*zero_ptr).0 != K::SENTINEL_ZERO {
                 zero_ptr = ptr::null_mut();
             }
             let mut one_ptr = self.table.offset(-1);
-            if (*one_ptr).0 != K::thin_sentinel_one() {
+            if (*one_ptr).0 != K::SENTINEL_ONE {
                 one_ptr = ptr::null_mut();
             }
             let iter = IntoIter {
@@ -1964,7 +1964,7 @@ impl<K: ThinSentinel + Eq, V> Iterator for IntoIter<K, V> {
         }
         unsafe {
             while self.cur < self.end {
-                if K::thin_sentinel_zero() != (*self.cur).0 && K::thin_sentinel_one() != (*self.cur).0 {
+                if K::SENTINEL_ZERO != (*self.cur).0 && K::SENTINEL_ONE != (*self.cur).0 {
                     let r = Some(ptr::read(self.cur));
                     self.left -= 1;
                     self.cur = self.cur.add(1);
@@ -2002,7 +2002,7 @@ impl<K: ThinSentinel + Eq, V> Drop for IntoIter<K, V> {
                         ptr::drop_in_place(self.sentinel_one_ptr);
                     }
                     while self.cur < self.end {
-                        if K::thin_sentinel_zero() != (*self.cur).0 && K::thin_sentinel_one() != (*self.cur).0 {
+                        if K::SENTINEL_ZERO != (*self.cur).0 && K::SENTINEL_ONE != (*self.cur).0 {
                             ptr::drop_in_place(self.cur);
                         }
                         self.cur = self.cur.add(1);

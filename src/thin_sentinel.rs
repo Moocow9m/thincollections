@@ -34,13 +34,8 @@ use std::any::TypeId;
 /// }
 ///
 /// impl ThinSentinel for Color {
-///     fn thin_sentinel_zero() -> Self {
-///         Color {r: 0, g: 0, b: 0}
-///     }
-///
-///     fn thin_sentinel_one() -> Self {
-///         Color {r : 0, g: 0, b: 1}
-///     }
+///     const SENTINEL_ZERO: Self = Color {r: 0, g: 0, b: 0};
+///     const SENTINEL_ONE: Self = Color {r : 0, g: 0, b: 1};
 /// }
 ///
 /// let mut colors = ThinSet::new();
@@ -59,23 +54,15 @@ use std::any::TypeId;
 ///
 ///
 pub trait ThinSentinel {
-    #[inline(always)]
-    fn thin_sentinel_zero() -> Self;
-    #[inline(always)]
-    fn thin_sentinel_one() -> Self;
+    const SENTINEL_ZERO: Self;
+    const SENTINEL_ONE: Self;
 }
 
 macro_rules! impl_sentinel_for_primitive {
     ($T:ty) => (
         impl ThinSentinel for $T {
-            #[inline(always)]
-            fn thin_sentinel_zero() -> Self {
-                0 as $T
-            }
-            #[inline(always)]
-            fn thin_sentinel_one() -> Self {
-                1 as $T
-            }
+            const SENTINEL_ZERO: $T = 0 as $T;
+            const SENTINEL_ONE: $T = 1 as $T;
         }
     )
 }
@@ -117,34 +104,19 @@ impl_sentinel_for_primitive!(char);
 
 /* this is a really bad idea:
 impl<V> ThinSentinel for Box<V> where V: ThinSentinel {
-    fn thin_sentinel_zero() -> Self {
-        Box::new(V::thin_sentinel_zero()) //allocates!!!!
-    }
-
-    fn thin_sentinel_one() -> Self {
-        Box::new(V::thin_sentinel_one())
-    }
+    const SENTINEL_ZERO: Self = Box::new(V::SENTINEL_ZERO) //allocates!!!!
+    const SENTINEL_ONE: Self = Box::new(V::SENTINEL_ONE)
 }
 */
 
 impl<T: ThinSentinel, U: ThinSentinel> ThinSentinel for (T, U) {
-    fn thin_sentinel_zero() -> Self {
-        (T::thin_sentinel_zero(), U::thin_sentinel_zero())
-    }
-
-    fn thin_sentinel_one() -> Self {
-        (T::thin_sentinel_zero(), U::thin_sentinel_one())
-    }
+    const SENTINEL_ZERO: Self = (T::SENTINEL_ZERO, U::SENTINEL_ZERO);
+    const SENTINEL_ONE: Self = (T::SENTINEL_ZERO, U::SENTINEL_ONE);
 }
 
 impl<T: ThinSentinel, U: ThinSentinel, V: ThinSentinel> ThinSentinel for (T, U, V) {
-    fn thin_sentinel_zero() -> Self {
-        (T::thin_sentinel_zero(), U::thin_sentinel_zero(), V::thin_sentinel_zero())
-    }
-
-    fn thin_sentinel_one() -> Self {
-        (T::thin_sentinel_zero(), U::thin_sentinel_zero(), V::thin_sentinel_one())
-    }
+    const SENTINEL_ZERO: Self = (T::SENTINEL_ZERO, U::SENTINEL_ZERO, V::SENTINEL_ZERO);
+    const SENTINEL_ONE: Self = (T::SENTINEL_ZERO, U::SENTINEL_ZERO, V::SENTINEL_ONE);
 }
 
 //impl<T: ThinSentinel, U: ThinSentinel, V: ThinSentinel, W: ThinSentinel> ThinSentinel for (T, U, V, W) {
@@ -174,13 +146,8 @@ pub enum ThinSentinelEnum<T> {
 }
 
 impl<T> ThinSentinel for ThinSentinelEnum<T> {
-    fn thin_sentinel_zero() -> Self {
-        ThinSentinelEnum::ZERO
-    }
-
-    fn thin_sentinel_one() -> Self {
-        ThinSentinelEnum::ONE
-    }
+    const SENTINEL_ZERO: Self = ThinSentinelEnum::ZERO;
+    const SENTINEL_ONE: Self = ThinSentinelEnum::ONE;
 }
 
 struct TypeIdZero {}
@@ -188,11 +155,6 @@ struct TypeIdZero {}
 struct TypeIdOne {}
 
 impl ThinSentinel for TypeId {
-    fn thin_sentinel_zero() -> Self {
-        TypeId::of::<TypeIdZero>()
-    }
-
-    fn thin_sentinel_one() -> Self {
-        TypeId::of::<TypeIdOne>()
-    }
+    const SENTINEL_ZERO: Self = TypeId::of::<TypeIdZero>();
+    const SENTINEL_ONE: Self = TypeId::of::<TypeIdOne>();
 }

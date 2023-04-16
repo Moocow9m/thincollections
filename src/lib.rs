@@ -42,6 +42,7 @@
 //! # }
 //! ```
 //!
+#![feature(const_type_id)]
 
 pub mod thin_sentinel;
 pub mod thin_map;
